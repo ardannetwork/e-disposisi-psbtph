@@ -16,6 +16,7 @@ const MainAppContent: React.FC = () => {
   const { currentUser, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Modals state
   const [isSuratModalOpen, setIsSuratModalOpen] = useState(false);
@@ -23,6 +24,8 @@ const MainAppContent: React.FC = () => {
   const [editingSurat, setEditingSurat] = useState<DisposisiSurat | null>(null);
 
   const [isFirebaseModalOpen, setIsFirebaseModalOpen] = useState(false);
+
+  const toggleSidebar = () => setSidebarOpen((prev) => !prev);
 
   // 1. IF NOT LOGGED IN: SHOW LOGIN / REGISTER SCREEN
   if (!currentUser) {
@@ -90,7 +93,10 @@ const MainAppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-white">
       {/* NAVBAR */}
-      <Navbar onOpenFirebaseModal={() => setIsFirebaseModalOpen(true)} />
+      <Navbar
+        onOpenFirebaseModal={() => setIsFirebaseModalOpen(true)}
+        onToggleSidebar={toggleSidebar}
+      />
 
       {/* MAIN CONTAINER */}
       <div className="flex-1 flex flex-col lg:flex-row max-w-7xl w-full mx-auto p-4 lg:p-6 gap-6">
@@ -99,6 +105,8 @@ const MainAppContent: React.FC = () => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onOpenNewSuratModal={handleOpenNewSuratModal}
+          sidebarOpen={sidebarOpen}
+          toggleSidebar={toggleSidebar}
         />
 
         {/* PAGE CONTENT */}

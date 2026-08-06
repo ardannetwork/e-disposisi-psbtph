@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { PETUGAS_PBT_LIST, UserRole } from '../types/disposisi';
-import { ShieldCheck, UserCheck, RefreshCw, Sparkles, AlertCircle, Key, LogOut, Wallet, Sun, Moon } from 'lucide-react';
+import { ShieldCheck, UserCheck, RefreshCw, Sparkles, AlertCircle, Key, LogOut, Wallet, Sun, Moon, Menu } from 'lucide-react';
 
 interface NavbarProps {
   onOpenFirebaseModal: () => void;
+  onToggleSidebar: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenFirebaseModal }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenFirebaseModal, onToggleSidebar }) => {
   const { currentUser, switchDemoRole, logout, usersList, isFirebaseActive, theme, toggleTheme } = useAuth();
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [selectedPbt, setSelectedPbt] = useState<string>(
@@ -24,8 +25,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenFirebaseModal }) => {
   return (
     <header className="sticky top-0 z-30 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-slate-100 px-4 lg:px-8 py-3 transition-all">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-        {/* BRANDING LOGO & TITLE */}
+        {/* LEFT: HAMBURGER MENU & BRANDING LOGO & TITLE */}
         <div className="flex items-center gap-3">
+          {/* MOBILE MENU BUTTON */}
+          <button
+            onClick={onToggleSidebar}
+            className="lg:hidden flex items-center justify-center bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 text-slate-300 p-2 rounded-xl transition-colors"
+            title="Buka Menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-green-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white text-xl font-bold">
             🌱
           </div>
