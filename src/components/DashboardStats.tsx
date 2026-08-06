@@ -46,18 +46,18 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* WELCOME BANNER */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-900/80 via-slate-900 to-teal-950 p-6 border border-emerald-500/20 shadow-xl">
-        <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-50 via-slate-50 to-teal-50 dark:bg-gradient-to-r dark:from-emerald-900/80 dark:via-slate-900 dark:to-teal-950 p-6 border border-emerald-500/20 dark:border-emerald-500/20 shadow-xl">
+        <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-emerald-500/10 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-1">
+            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider mb-1">
               <Sparkles className="w-4 h-4" />
               <span>Sistem E-Disposisi UPT PSBTPH Malang</span>
             </div>
-            <h2 className="text-2xl lg:text-3xl font-extrabold text-white">
+            <h2 className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white">
               Selamat Datang, {currentUser?.name}!
             </h2>
-            <p className="text-sm text-slate-300 mt-1 max-w-xl">
+            <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 max-w-xl">
               {isPbt
                 ? `Menampilkan data disposisi penugasan benih khusus untuk ${pbtName}.`
                 : 'Kelola data surat masuk, disposisi instruksi PBT, dan cetak lembar disposisi .docx dengan cepat.'}
@@ -67,7 +67,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={onNavigateToSurat}
-              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg transition-all"
+              className="bg-emerald-500 hover:bg-emerald-400 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg transition-all"
             >
               Lihat Daftar Surat &rarr;
             </button>

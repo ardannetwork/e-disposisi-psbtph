@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { PETUGAS_PBT_LIST, UserRole } from '../types/disposisi';
-import { ShieldCheck, UserCheck, RefreshCw, Sparkles, AlertCircle, Key, LogOut, Wallet } from 'lucide-react';
+import { ShieldCheck, UserCheck, RefreshCw, Sparkles, AlertCircle, Key, LogOut, Wallet, Sun, Moon } from 'lucide-react';
 
 interface NavbarProps {
   onOpenFirebaseModal: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenFirebaseModal }) => {
-  const { currentUser, switchDemoRole, logout, usersList, isFirebaseActive } = useAuth();
+  const { currentUser, switchDemoRole, logout, usersList, isFirebaseActive, theme, toggleTheme } = useAuth();
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [selectedPbt, setSelectedPbt] = useState<string>(
     currentUser?.pbt_name || PETUGAS_PBT_LIST[0]
@@ -220,6 +220,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenFirebaseModal }) => {
               </div>
             </div>
           )}
+
+          {/* THEME TOGGLE BUTTON */}
+          <button
+            onClick={toggleTheme}
+            className="flex items-center gap-1.5 bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 text-slate-300 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 text-slate-400" />
+            )}
+          </button>
 
           {/* LOGOUT BUTTON */}
           <button

@@ -338,14 +338,14 @@ export const SuratList: React.FC<SuratListProps> = ({
                             <span>.docx</span>
                           </button>
 
-                          <button
+                          {/* <button
                           onClick={() => exportDisposisiToPdf(item)}
                           className="bg-red-600/20 hover:bg-red-600/40 text-red-300 border border-red-500/40 px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-all shadow-sm"
                           title="Unduh Lembar Disposisi PDF"
 >
                           <Download className="w-3.5 h-3.5" />
                           <span>.pdf</span>
-                        </button>
+                        </button> */}
 
 
                           {/* EDIT / DISPOSISI BUTTON (ADMIN / OPERATOR) */}

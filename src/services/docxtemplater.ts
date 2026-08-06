@@ -94,7 +94,7 @@ const createDocxXmlTemplate = () => {
       <w:tblPr>
         <w:tblW w:w="5000" w:type="pct"/>
         <w:tblBorders>
-          <w:top w:val="none"/>
+          <w:top w:val="single" w:sz="8" w:space="0" w:color="000000"/>
           <w:left w:val="single" w:sz="8" w:space="0" w:color="000000"/>
           <w:bottom w:val="single" w:sz="8" w:space="0" w:color="000000"/>
           <w:right w:val="single" w:sz="8" w:space="0" w:color="000000"/>
@@ -105,8 +105,6 @@ const createDocxXmlTemplate = () => {
           <w:tcPr><w:tcW w:w="5000" w:type="pct"/></w:tcPr>
           <w:p><w:r><w:rPr><w:b/><w:sz w:val="22"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>Catatan :</w:t></w:r></w:p>
           <w:p><w:r><w:rPr><w:sz w:val="22"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>{catatan_text}</w:t></w:r></w:p>
-          <w:p/>
-          <w:p/>
           <w:p/>
           <w:p/>
           <w:p/>
@@ -131,7 +129,7 @@ const createDocxXmlTemplate = () => {
           <w:tcPr><w:tcW w:w="2500" w:type="pct"/></w:tcPr>
           <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="22"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>Koordinator</w:t></w:r></w:p>
           <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="22"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>Wilayah Kerja IV Malang</w:t></w:r></w:p>
-          <w:p/><w:p/><w:p/>
+          <w:p/>
           <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:u w:val="single"/><w:sz w:val="22"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>{disposisi_oleh}</w:t></w:r></w:p>
           <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="22"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>{nip_oleh}</w:t></w:r></w:p>
         </w:tc>

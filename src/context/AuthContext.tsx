@@ -23,6 +23,8 @@ interface AuthContextType {
   currentUser: UserAccount | null;
   usersList: UserAccount[];
   disposisiList: DisposisiSurat[];
+  theme: string;
+  toggleTheme: () => void;
   login: (email: string, pass: string) => { success: boolean; message: string; user?: UserAccount };
   logout: () => void;
   switchDemoRole: (role: UserRole, pbtName?: string) => void;
@@ -72,6 +74,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return usersList.find((u) => u.role === 'admin') || usersList[0] || null;
   });
 
+  const [theme, setTheme] = useState<string>(() => {
+    const saved = localStorage.getItem('e_disposisi_theme');
+    return saved || 'dark';
+  });
+
   const isFirebaseActive = !!firebaseDb;
 
   useEffect(() => {
@@ -89,6 +96,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    localStorage.setItem('e_disposisi_theme', theme);
+    const htmlEl = document.documentElement;
+    if (theme === 'light') {
+      htmlEl.classList.add('light');
+      htmlEl.classList.remove('dark');
+    } else {
+      htmlEl.classList.remove('light');
+      htmlEl.classList.add('dark');
+    }
+  }, [theme]);
 
   // Sync with Firestore Realtime listeners
   useEffect(() => {
@@ -292,6 +311,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateDisposisi(id, { status: newStatus });
   };
 
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
   const exportDatabase = () => {
     exportDatabaseToJson(disposisiList, usersList);
   };
@@ -311,6 +334,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUser,
         usersList,
         disposisiList,
+        theme,
+        toggleTheme,
         login,
         logout,
         switchDemoRole,

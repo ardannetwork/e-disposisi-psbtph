@@ -26,26 +26,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <aside className="w-full lg:w-64 bg-slate-900/60 backdrop-blur-md border-r border-slate-800 p-4 flex flex-col justify-between shrink-0">
       <div className="space-y-6">
         {/* PROFILE CARD SUMMARY */}
-        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-800/60 border border-slate-700/80 shadow-md">
+        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/60 dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-800/60 border border-slate-200 dark:border-slate-700/80 shadow-md">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg text-white shadow-md ${
-              isAdmin ? 'bg-gradient-to-br from-emerald-500 to-teal-700' :
-              isOperator ? 'bg-gradient-to-br from-cyan-500 to-blue-700' :
-              'bg-gradient-to-br from-amber-500 to-orange-700'
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg text-slate-900 shadow-md ${
+              isAdmin ? 'bg-gradient-to-br from-emerald-500 to-teal-700 dark:bg-gradient-to-br dark:from-emerald-500 dark:to-teal-700' :
+              isOperator ? 'bg-gradient-to-br from-cyan-500 to-blue-700 dark:bg-gradient-to-br dark:from-cyan-500 dark:to-blue-700' :
+              'bg-gradient-to-br from-amber-500 to-orange-700 dark:bg-gradient-to-br dark:from-amber-500 dark:to-orange-700'
             }`}>
               {currentUser?.name.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="font-bold text-sm text-slate-100 truncate">{currentUser?.name}</h3>
-              <p className="text-xs text-slate-400 truncate">{currentUser?.email}</p>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">{currentUser?.name}</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{currentUser?.email}</p>
             </div>
           </div>
-          <div className="mt-2.5 pt-2 border-t border-slate-700/50 flex items-center justify-between text-[11px]">
-            <span className="text-slate-400">Hak Akses:</span>
+          <div className="mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-700/50 flex items-center justify-between text-[11px]">
+            <span className="text-slate-500 dark:text-slate-400">Hak Akses:</span>
             <span className={`px-2 py-0.5 rounded-md font-semibold uppercase ${
-              isAdmin ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
-              isOperator ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' :
-              'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              isAdmin ? 'bg-emerald-500/20 text-emerald-700 border border-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30' :
+              isOperator ? 'bg-cyan-500/20 text-cyan-700 border border-cyan-300 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/30' :
+              'bg-amber-500/20 text-amber-700 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30'
             }`}>
               {currentUser?.role}
             </span>

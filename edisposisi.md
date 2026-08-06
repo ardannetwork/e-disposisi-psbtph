@@ -16,7 +16,7 @@ Aplikasi berbasis web ini dirancang untuk mendigitalisasi proses pengolahan, pen
 | Layer | Teknologi | Keterangan |
 | :--- | :--- | :--- |
 | **Frontend Framework** | React 18 + Vite (TypeScript) | Single Page Application (SPA) responsif & cepat |
-| **Styling & UI** | Tailwind CSS + Lucide Icons | Palette warna resmi hijau UPT PSBTPH, Glassmorphism, Dark Theme |
+| **Styling & UI** | Tailwind CSS + Lucide Icons | Palette warna resmi hijau UPT PSBTPH, Glassmorphism, Dark/Light Theme toggle |
 | **Document Generation** | `docxtemplater` + `pizzip` + `file-saver` | Generator dokumen `.docx` instansi otomatis via Mail Merge |
 | **Database & Engine** | Cloud Firestore + LocalStorage Fallback | Dual-Engine (Demo Local + Live Firebase Sync) |
 | **Authentication** | Firebase Auth + Internal Role Engine | Login email/password dengan mekanisme Admin Approval |
@@ -164,6 +164,18 @@ Sistem menggunakan 2 koleksi utama di Cloud Firestore (atau LocalStorage pada mo
   * Melihat daftar seluruh surat disposisi dengan status pembayaran.
   * **Mengedit field `pembayaran`** pada setiap surat disposisi (misal: `Belum Dibayar`, `DP 50%`, `Lunas`, `Dicicil`, `Dibatalkan`).
   * **Restriksi:** Tidak dapat mengubah data utama surat, menghapus surat, atau mengakses fitur manajemen user.
+
+---
+
+## 🌗 Tema (Light/Dark Mode)
+
+Aplikasi mendukung toggle antara **Dark Mode** dan **Light Mode**. Pengguna dapat mengganti tema menggunakan tombol toggle di navbar (ikon matahari/bulan). Preferensi tema disimpan di localStorage dan akan tetap dipertahankan saat login kembali.
+
+### Cara Kerja:
+- Secara default, aplikasi menggunakan **Dark Mode**
+- Tombol toggle di navbar (kanan atas) memungkinkan switch ke **Light Mode**
+- Tema dipersist ke `localStorage` dengan key `e_disposisi_theme`
+- Semua komponen menggunakan CSS custom properties untuk mendukung kedua tema
 
 ---
 

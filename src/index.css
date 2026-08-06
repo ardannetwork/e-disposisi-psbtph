@@ -2,11 +2,304 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-primary: #020617;
+  --bg-secondary: #0f172a;
+  --bg-card: #0f172a;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --border-color: #1e293b;
+  --scrollbar-track: #0f172a;
+  --scrollbar-thumb: #334155;
+  --scrollbar-thumb-hover: #475569;
+}
+
+:root.light {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --bg-card: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border-color: #e2e8f0;
+  --scrollbar-track: #f1f5f9;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
+}
+
 @layer base {
   body {
-    background-color: #020617;
-    color: #f8fafc;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
+}
+
+/* ===== LIGHT MODE OVERRIDES ===== */
+
+/* Background: slate grays */
+:root.light .bg-slate-950,
+:root.light .bg-slate-950\/80,
+:root.light .bg-slate-950\/90 {
+  background-color: var(--bg-primary) !important;
+}
+:root.light .bg-slate-900,
+:root.light .bg-slate-900\/60,
+:root.light .bg-slate-900\/80,
+:root.light .bg-slate-900\/90 {
+  background-color: var(--bg-card) !important;
+}
+:root.light .bg-slate-800,
+:root.light .bg-slate-800\/40,
+:root.light .bg-slate-800\/50,
+:root.light .bg-slate-800\/60,
+:root.light .bg-slate-800\/70,
+:root.light .bg-slate-800\/80,
+:root.light .bg-slate-800\/90 {
+  background-color: var(--bg-secondary) !important;
+}
+:root.light .bg-slate-700,
+:root.light .bg-slate-700\/60,
+:root.light .bg-slate-700\/90 {
+  background-color: #e2e8f0 !important;
+}
+:root.light .bg-slate-600 {
+  background-color: #cbd5e1 !important;
+}
+:root.light .bg-slate-500\/20 {
+  background-color: #cbd5e1 !important;
+}
+
+/* Background: brand colors */
+:root.light .bg-emerald-500\/10,
+:root.light .bg-emerald-500\/15,
+:root.light .bg-emerald-500\/20 {
+  background-color: #dcfce7 !important;
+}
+:root.light .bg-emerald-600,
+:root.light .bg-emerald-600\/20,
+:root.light .bg-emerald-600\/40 {
+  background-color: #16a34a !important;
+}
+:root.light .bg-emerald-500,
+:root.light .bg-emerald-500\/30 {
+  background-color: #22c55e !important;
+}
+:root.light .bg-amber-500\/10,
+:root.light .bg-amber-500\/15,
+:root.light .bg-amber-500\/20 {
+  background-color: #fef3c7 !important;
+}
+:root.light .bg-amber-600,
+:root.light .bg-amber-600\/20 {
+  background-color: #ca8a04 !important;
+}
+:root.light .bg-cyan-500\/10,
+:root.light .bg-cyan-500\/15,
+:root.light .bg-cyan-500\/20,
+:root.light .bg-cyan-600\/20 {
+  background-color: #cffafe !important;
+}
+:root.light .bg-rose-500\/10,
+:root.light .bg-rose-500\/20 {
+  background-color: #fee2e2 !important;
+}
+:root.light .bg-rose-500,
+:root.light .bg-rose-500\/30,
+:root.light .bg-rose-500\/40 {
+  background-color: #f43f5e !important;
+}
+:root.light .bg-red-600\/20,
+:root.light .bg-red-600\/40 {
+  background-color: #fecaca !important;
+}
+:root.light .bg-teal-500\/10,
+:root.light .bg-teal-500\/20 {
+  background-color: #ccfbf1 !important;
+}
+:root.light .bg-violet-500\/20 {
+  background-color: #ede9fe !important;
+}
+:root.light .bg-blue-500\/10,
+:root.light .bg-blue-500\/20 {
+  background-color: #dbeafe !important;
+}
+:root.light .bg-purple-500\/20 {
+  background-color: #f3e8ff !important;
+}
+:root.light .bg-orange-500\/20 {
+  background-color: #ffedd5 !important;
+}
+:root.light .bg-green-500\/20 {
+  background-color: #dcfce7 !important;
+}
+:root.light .bg-yellow-500\/20 {
+  background-color: #fef9c3 !important;
+}
+
+/* Background: gradients */
+:root.light .bg-gradient-to-r.from-emerald-500.to-teal-700,
+:root.light .bg-gradient-to-r.from-emerald-600.to-teal-600,
+:root.light .bg-gradient-to-r.from-emerald-500.via-teal-500.to-emerald-500 {
+  background-image: linear-gradient(to right, #16a34a, #0d9488) !important;
+}
+:root.light .bg-gradient-to-r.from-amber-500.to-orange-500 {
+  background-image: linear-gradient(to right, #d97706, #ea580c) !important;
+}
+:root.light .bg-gradient-to-r.from-cyan-500.to-blue-700 {
+  background-image: linear-gradient(to right, #0891b2, #1d4ed8) !important;
+}
+:root.light .bg-gradient-to-r.from-rose-500.to-amber-500 {
+  background-image: linear-gradient(to right, #e11d48, #d97706) !important;
+}
+:root.light .bg-gradient-to-r.from-emerald-500.to-teal-500 {
+  background-image: linear-gradient(to right, #10b981, #14b8a6) !important;
+}
+:root.light .bg-gradient-to-r.from-amber-600.to-amber-500 {
+  background-image: linear-gradient(to right, #d97706, #f59e0b) !important;
+}
+
+/* Text colors: white and light grays */
+:root.light .text-white {
+  color: #0f172a !important;
+}
+:root.light .text-slate-100 {
+  color: #0f172a !important;
+}
+:root.light .text-slate-200 {
+  color: #1e293b !important;
+}
+:root.light .text-slate-300 {
+  color: #334155 !important;
+}
+:root.light .text-slate-400,
+:root.light .text-slate-500 {
+  color: #64748b !important;
+}
+:root.light .text-slate-600 {
+  color: #475569 !important;
+}
+
+/* Text colors: brand colors - darker for light mode contrast */
+:root.light .text-emerald-300 {
+  color: #15803d !important;
+}
+:root.light .text-emerald-400 {
+  color: #16a34a !important;
+}
+:root.light .text-emerald-500 {
+  color: #22c55e !important;
+}
+:root.light .text-amber-300 {
+  color: #92400e !important;
+}
+:root.light .text-amber-400 {
+  color: #b45309 !important;
+}
+:root.light .text-cyan-300 {
+  color: #0e7490 !important;
+}
+:root.light .text-cyan-400 {
+  color: #0891b2 !important;
+}
+:root.light .text-rose-300 {
+  color: #be123c !important;
+}
+:root.light .text-rose-400 {
+  color: #e11d48 !important;
+}
+:root.light .text-teal-300 {
+  color: #0f766e !important;
+}
+:root.light .text-teal-400 {
+  color: #0d9488 !important;
+}
+:root.light .text-violet-400 {
+  color: #6d28d9 !important;
+}
+:root.light .text-blue-400 {
+  color: #2563eb !important;
+}
+:root.light .text-purple-300 {
+  color: #7e22ce !important;
+}
+:root.light .text-red-300 {
+  color: #dc2626 !important;
+}
+:root.light .text-orange-400 {
+  color: #ea580c !important;
+}
+
+/* Border colors */
+:root.light .border-slate-700,
+:root.light .border-slate-800,
+:root.light .border-slate-800\/60,
+:root.light .border-slate-800\/80 {
+  border-color: #cbd5e1 !important;
+}
+:root.light .border-slate-700\/50,
+:root.light .border-slate-700\/60,
+:root.light .border-slate-700\/80 {
+  border-color: #cbd5e1 !important;
+}
+:root.light .border-slate-500\/30,
+:root.light .border-slate-600 {
+  border-color: #94a3b8 !important;
+}
+:root.light .border-emerald-500,
+:root.light .border-emerald-500\/20,
+:root.light .border-emerald-500\/30,
+:root.light .border-emerald-500\/40 {
+  border-color: #86efac !important;
+}
+:root.light .border-amber-500,
+:root.light .border-amber-500\/20,
+:root.light .border-amber-500\/30 {
+  border-color: #fcd34d !important;
+}
+:root.light .border-cyan-500\/30 {
+  border-color: #a5f3fc !important;
+}
+:root.light .border-rose-500\/30,
+:root.light .border-rose-500\/40 {
+  border-color: #fda4af !important;
+}
+
+/* Hover states */
+:root.light .hover\:bg-slate-800:hover {
+  background-color: #e2e8f0 !important;
+}
+:root.light .hover\:bg-slate-700:hover {
+  background-color: #cbd5e1 !important;
+}
+:root.light .hover\:bg-slate-800\/60:hover {
+  background-color: #e2e8f0 !important;
+}
+:root.light .hover\:bg-emerald-500:hover,
+:root.light .hover\:bg-emerald-400:hover {
+  background-color: #16a34a !important;
+}
+:root.light .hover\:bg-amber-500:hover {
+  background-color: #d97706 !important;
+}
+:root.light .hover\:bg-rose-500:hover {
+  background-color: #e11d48 !important;
+}
+:root.light .hover\:bg-slate-700\/60:hover {
+  background-color: #94a3b8 !important;
+}
+:root.light .hover\:border-slate-600:hover {
+  border-color: #94a3b8 !important;
+}
+:root.light .hover\:text-slate-200:hover {
+  color: #1e293b !important;
+}
+
+/* Shadow overrides for light mode */
+:root.light .shadow-md,
+:root.light .shadow-lg,
+:root.light .shadow-xl,
+:root.light .shadow-2xl {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06) !important;
 }
 
 /* Custom Scrollbars */
@@ -14,16 +307,13 @@
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: var(--scrollbar-track);
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: var(--scrollbar-thumb);
   border-radius: 9999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: var(--scrollbar-thumb-hover);
 }
