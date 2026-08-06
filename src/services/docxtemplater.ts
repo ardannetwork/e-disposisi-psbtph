@@ -56,7 +56,6 @@ const createDocxXmlTemplate = () => {
           <w:insideV w:val="single" w:sz="8" w:space="0" w:color="000000"/>
         </w:tblBorders>
       </w:tblPr>
-      
       <!-- HEADER TABEL -->
       <w:tr>
         <w:tc>
@@ -68,7 +67,6 @@ const createDocxXmlTemplate = () => {
           <w:p><w:r><w:rPr><w:b/><w:sz w:val="22"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>Dengan hormat harap :</w:t></w:r></w:p>
         </w:tc>
       </w:tr>
-
       <!-- CONTENT TABEL -->
       <w:tr>
         <w:tc>
@@ -88,7 +86,6 @@ const createDocxXmlTemplate = () => {
         </w:tc>
       </w:tr>
     </w:tbl>
-
     <!-- KOTAK CATATAN -->
     <w:tbl>
       <w:tblPr>
@@ -105,15 +102,10 @@ const createDocxXmlTemplate = () => {
           <w:tcPr><w:tcW w:w="5000" w:type="pct"/></w:tcPr>
           <w:p><w:r><w:rPr><w:b/><w:sz w:val="22"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>Catatan :</w:t></w:r></w:p>
           <w:p><w:r><w:rPr><w:sz w:val="22"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>{catatan_text}</w:t></w:r></w:p>
-          <w:p/>
-          <w:p/>
-          <w:p/>
         </w:tc>
       </w:tr>
     </w:tbl>
-
     <w:p><w:pPr><w:spacing w:after="280"/></w:pPr></w:p>
-
     <!-- TANDA TANGAN KOORDINATOR -->
     <w:tbl>
       <w:tblPr>
@@ -129,6 +121,7 @@ const createDocxXmlTemplate = () => {
           <w:tcPr><w:tcW w:w="2500" w:type="pct"/></w:tcPr>
           <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="22"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>Koordinator</w:t></w:r></w:p>
           <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="22"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>Wilayah Kerja IV Malang</w:t></w:r></w:p>
+          <w:p/>
           <w:p/>
           <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:u w:val="single"/><w:sz w:val="22"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>{disposisi_oleh}</w:t></w:r></w:p>
           <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="22"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>{nip_oleh}</w:t></w:r></w:p>
