@@ -47,6 +47,7 @@ interface AuthContextType {
   deleteDisposisi: (id: string) => void;
   togglePbtStatus: (id: string, newStatus: boolean) => void;
   updatePublicSubmissionStatus: (id: string, status: 'processed' | 'rejected') => void;
+  processPublicSubmission: (id: string) => Promise<void>;
   exportDatabase: () => void;
   importDatabase: (jsonContent: string) => { success: boolean; message: string };
   isFirebaseActive: boolean;
@@ -359,6 +360,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updatePublicSubmissionInFirestore(id, { status, updated_at: now });
   };
 
+  const processPublicSubmission = async (id: string) => {
+    const submission = publicSubmissionsList.find((item) => item.id === id);
+    if (!submission) return;
+
+    const now = new Date().toISOString();
+    const newDisposisi: Omit<DisposisiSurat, 'id' | 'created_at' | 'updated_at'> = {
+      surat_dari: submission.surat_dari,
+      nomor_surat: '',
+      tanggal_surat: now.slice(0, 10),
+      diterima_tanggal: now.slice(0, 10),
+      nomor_agenda: '',
+      sifat: 'Biasa',
+      hal: submission.hal,
+      hal_type: submission.hal_type,
+      petugas: '',
+      catatan: [],
+      link_dokumen: submission.link_dokumen,
+      status: false,
+      disposisi_oleh: currentUser?.name,
+      tanggal_disposisi: now.slice(0, 10),
+    };
+
+    addDisposisi(newDisposisi);
+    await updatePublicSubmissionStatus(id, 'processed');
+  };
+
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
@@ -397,6 +424,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deleteDisposisi,
       togglePbtStatus,
       updatePublicSubmissionStatus,
+      processPublicSubmission,
       exportDatabase,
       importDatabase,
       isFirebaseActive,

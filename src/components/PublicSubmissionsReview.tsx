@@ -8,7 +8,7 @@ import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 type ReviewStatus = 'all' | 'pending' | 'processed' | 'rejected';
 
 export const PublicSubmissionsReview: React.FC = () => {
-  const { publicSubmissionsList, updatePublicSubmissionStatus, currentUser } = useAuth();
+  const { publicSubmissionsList, updatePublicSubmissionStatus, processPublicSubmission, currentUser } = useAuth();
   const [filter, setFilter] = useState<ReviewStatus>('all');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [firestoreItems, setFirestoreItems] = useState<PublicSuratSubmission[]>([]);
@@ -251,12 +251,21 @@ export const PublicSubmissionsReview: React.FC = () => {
                   {submission.status === 'pending' && canReview && (
                     <div className="flex items-center gap-2 shrink-0">
                       <button
-                        onClick={() => handleStatusChange(submission.id, 'processed')}
+                        onClick={async () => {
+                          setProcessingId(submission.id);
+                          try {
+                            await processPublicSubmission(submission.id);
+                          } catch (err) {
+                            console.error('Failed to process submission:', err);
+                          } finally {
+                            setProcessingId(null);
+                          }
+                        }}
                         disabled={processingId === submission.id}
                         className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <CheckCircle2 className="w-4 h-4" />
-                        {processingId === submission.id ? 'Menyimpan...' : 'Processed'}
+                        {processingId === submission.id ? 'Memindahkan...' : 'Processed'}
                       </button>
                       <button
                         onClick={() => handleStatusChange(submission.id, 'rejected')}
