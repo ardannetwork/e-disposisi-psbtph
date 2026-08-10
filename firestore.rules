@@ -2,29 +2,21 @@ rules_version='2'
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isAdminOrOperator() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'operator'];
+    match /public_submissions/{id} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'operator'];
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'operator'];
     }
 
     match /disposisi_surat/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isAdminOrOperator();
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'operator'];
     }
 
     match /users/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isAdminOrOperator();
-    }
-
-    match /public_submissions/{id} {
-      allow read: if isAuthenticated();
-      allow create: if true;
-      allow update: if isAdminOrOperator();
-      allow delete: if isAdminOrOperator();
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'operator'];
     }
   }
 }
