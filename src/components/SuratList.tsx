@@ -74,7 +74,15 @@ export const SuratList: React.FC<SuratListProps> = ({
   });
 
   const handleDelete = (id: string, noAgenda: string) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus data agenda ${noAgenda}?`)) {
+    const item = disposisiList.find((d) => d.id === id);
+    if (!item) return;
+
+    const hasFile = !!item.link_dokumen && !item.link_dokumen.startsWith('http');
+    const confirmMsg = hasFile
+      ? `Apakah Anda yakin menghapus data agenda ${noAgenda}?\n\nSurat: ${item.surat_dari}\nNo. Surat: ${item.nomor_surat}\n\nPERHATIAN: File upload yang terlampir juga akan dihapus permanen.`
+      : `Apakah Anda yakin menghapus data agenda ${noAgenda}?\n\nSurat: ${item.surat_dari}\nNo. Surat: ${item.nomor_surat}`;
+
+    if (confirm(confirmMsg)) {
       deleteDisposisi(id);
     }
   };
