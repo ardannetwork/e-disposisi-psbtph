@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserAccount, UserRole, DisposisiSurat } from '../types/disposisi';
+import { UserAccount, UserRole, DisposisiSurat, PublicSuratSubmission } from '../types/disposisi';
 import { INITIAL_USERS, INITIAL_DISPOSISI_SURAT } from '../data/mockData';
 import { firebaseDb, firebaseAuth } from '../services/firebase';
 import {
@@ -13,6 +13,7 @@ import {
   syncUserToFirestore,
   updateUserInFirestore,
   deleteUserFromFirestore,
+  updatePublicSubmissionInFirestore,
   exportDatabaseToJson,
   importDatabaseFromJson,
 } from '../services/db';
@@ -23,6 +24,7 @@ interface AuthContextType {
   currentUser: UserAccount | null;
   usersList: UserAccount[];
   disposisiList: DisposisiSurat[];
+  publicSubmissionsList: PublicSuratSubmission[];
   theme: string;
   toggleTheme: () => void;
   login: (email: string, pass: string) => { success: boolean; message: string; user?: UserAccount };
@@ -42,6 +44,7 @@ interface AuthContextType {
   updateDisposisi: (id: string, data: Partial<DisposisiSurat>) => void;
   deleteDisposisi: (id: string) => void;
   togglePbtStatus: (id: string, newStatus: boolean) => void;
+  updatePublicSubmissionStatus: (id: string, status: 'processed' | 'rejected') => void;
   exportDatabase: () => void;
   importDatabase: (jsonContent: string) => { success: boolean; message: string };
   isFirebaseActive: boolean;
@@ -62,6 +65,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved.length > 0 ? saved : INITIAL_DISPOSISI_SURAT;
   });
 
+  const [publicSubmissionsList, setPublicSubmissionsList] = useState<PublicSuratSubmission[]>([]);
+
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
     const saved = localStorage.getItem(CURRENT_USER_STORAGE_KEY);
     if (saved) {
@@ -71,7 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Failed to parse saved user state', err);
       }
     }
-    return usersList.find((u) => u.role === 'admin') || usersList[0] || null;
+    return null;
   });
 
   const [theme, setTheme] = useState<string>(() => {
@@ -91,11 +96,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (currentUser) {
+      const validUser = usersList.find(
+        (u) => u.id === currentUser.id && u.approved
+      );
+      if (!validUser) {
+        setCurrentUser(null);
+        localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
+        return;
+      }
       localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(currentUser));
     } else {
       localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
     }
-  }, [currentUser]);
+  }, [currentUser, usersList]);
 
   useEffect(() => {
     localStorage.setItem('e_disposisi_theme', theme);
@@ -133,9 +146,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
 
+      const unsubPublic = onSnapshot(collection(firebaseDb, 'public_submissions'), (snapshot) => {
+        const items: PublicSuratSubmission[] = [];
+        snapshot.forEach((docSnap) => {
+          items.push({ id: docSnap.id, ...docSnap.data() } as PublicSuratSubmission);
+        });
+        if (items.length > 0) {
+          setPublicSubmissionsList(items);
+        }
+      });
+
       return () => {
         unsubSurat();
         unsubUsers();
+        unsubPublic();
       };
     } catch (err) {
       console.warn('Firestore sync error fallback to local database', err);
@@ -311,6 +335,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateDisposisi(id, { status: newStatus });
   };
 
+  const updatePublicSubmissionStatus = (id: string, status: 'processed' | 'rejected') => {
+    const now = new Date().toISOString();
+    setPublicSubmissionsList((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, status, updated_at: now } : item))
+    );
+    updatePublicSubmissionInFirestore(id, { status, updated_at: now });
+  };
+
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
@@ -330,27 +362,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider
-      value={{
-        currentUser,
-        usersList,
-        disposisiList,
-        theme,
-        toggleTheme,
-        login,
-        logout,
-        switchDemoRole,
-        registerUser,
-        approveUser,
-        rejectUser,
-        deleteUser: rejectUser,
-        addDisposisi,
-        updateDisposisi,
-        deleteDisposisi,
-        togglePbtStatus,
-        exportDatabase,
-        importDatabase,
-        isFirebaseActive,
-      }}
+    value={{
+      currentUser,
+      usersList,
+      disposisiList,
+      publicSubmissionsList,
+      theme,
+      toggleTheme,
+      login,
+      logout,
+      switchDemoRole,
+      registerUser,
+      approveUser,
+      rejectUser,
+      deleteUser: rejectUser,
+      addDisposisi,
+      updateDisposisi,
+      deleteDisposisi,
+      togglePbtStatus,
+      updatePublicSubmissionStatus,
+      exportDatabase,
+      importDatabase,
+      isFirebaseActive,
+    }}
     >
       {children}
     </AuthContext.Provider>

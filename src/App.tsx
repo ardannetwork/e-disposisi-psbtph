@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Sidebar, ActiveTab } from './components/Sidebar';
@@ -9,6 +9,8 @@ import { UserApprovalModal } from './components/UserApprovalModal';
 import { BendaharaPage } from './components/BendaharaPage';
 import { FirebaseConfigModal } from './components/FirebaseConfigModal';
 import { LoginRegister } from './components/LoginRegister';
+import { PublicSuratForm } from './components/PublicSuratForm';
+import { PublicSubmissionsReview } from './components/PublicSubmissionsReview';
 import { DisposisiSurat } from './types/disposisi';
 import { AlertTriangle, LogOut, Clock, ShieldAlert } from 'lucide-react';
 
@@ -17,6 +19,7 @@ const MainAppContent: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentHash, setCurrentHash] = useState(window.location.hash);
 
   // Modals state
   const [isSuratModalOpen, setIsSuratModalOpen] = useState(false);
@@ -27,7 +30,20 @@ const MainAppContent: React.FC = () => {
 
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
 
-  // 1. IF NOT LOGGED IN: SHOW LOGIN / REGISTER SCREEN
+  useEffect(() => {
+    const handleHashChange = () => setCurrentHash(window.location.hash);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const isPublicForm = currentHash === '#/form-publik';
+
+  // 1. IF PUBLIC FORM ROUTE: SHOW PUBLIC FORM (regardless of login state)
+  if (isPublicForm) {
+    return <PublicSuratForm />;
+  }
+
+  // 2. IF NOT LOGGED IN: SHOW LOGIN / REGISTER SCREEN
   if (!currentUser) {
     return <LoginRegister />;
   }
@@ -143,6 +159,8 @@ const MainAppContent: React.FC = () => {
               </button>
             </div>
           )}
+
+          {activeTab === 'public_submissions' && <PublicSubmissionsReview />}
         </main>
       </div>
 
@@ -152,6 +170,7 @@ const MainAppContent: React.FC = () => {
         onClose={() => setIsSuratModalOpen(false)}
         initialData={editingSurat}
         mode={suratModalMode}
+        onSuccess={() => setActiveTab('surat_list')}
       />
 
       <FirebaseConfigModal

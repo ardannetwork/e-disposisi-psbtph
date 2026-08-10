@@ -1,8 +1,8 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, FileText, PlusCircle, UserCheck, Settings, Shield, Sparkles, Wallet, Menu, X } from 'lucide-react';
+import { LayoutDashboard, FileText, PlusCircle, UserCheck, Settings, Shield, Sparkles, Wallet, Menu, X, ClipboardList } from 'lucide-react';
 
-export type ActiveTab = 'dashboard' | 'surat_list' | 'input_surat' | 'user_approval' | 'bendahara' | 'settings';
+export type ActiveTab = 'dashboard' | 'surat_list' | 'input_surat' | 'user_approval' | 'bendahara' | 'settings' | 'public_submissions';
 
 interface SidebarProps {
   activeTab: ActiveTab;
@@ -19,7 +19,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   sidebarOpen,
   toggleSidebar,
 }) => {
-  const { currentUser, usersList } = useAuth();
+  const { currentUser, usersList, publicSubmissionsList } = useAuth();
   const pendingUsersCount = usersList.filter((u) => !u.approved).length;
 
   const isPbt = currentUser?.role === 'pbt';
@@ -133,6 +133,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </span>
               )}
             </button>
+
+            {/* OPERATOR & ADMIN: PUBLIC SUBMISSIONS REVIEW */}
+            {(isOperator || isAdmin) && (
+              <button
+                onClick={() => handleNavClick('public_submissions')}
+                className={`w-full flex items-center justify-between px-3 lg:px-3.5 py-2 lg:py-2.5 rounded-xl font-medium text-xs transition-all ${
+                  activeTab === 'public_submissions'
+                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-sm'
+                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <ClipboardList className="w-4 h-4" />
+                  <span>Permohonan Publik</span>
+                </div>
+                {publicSubmissionsList.filter((s) => s.status === 'pending').length > 0 && (
+                  <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+                    {publicSubmissionsList.filter((s) => s.status === 'pending').length}
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* ADMIN ONLY: USER APPROVAL MANAGEMENT */}
             {isAdmin && (

@@ -15,12 +15,13 @@ import {
   Mail,
   User,
   Building,
+  FileText,
 } from 'lucide-react';
 
 export const LoginRegister: React.FC = () => {
   const { login, registerUser, switchDemoRole } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'surat'>('login');
 
   // Login Form State
   const [loginEmail, setLoginEmail] = useState('admin.malang@psbtph.go.id');
@@ -110,14 +111,14 @@ export const LoginRegister: React.FC = () => {
                 setLoginError('');
                 setRegMessage(null);
               }}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+              className={`flex-1 py-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${
                 activeTab === 'login'
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <LogIn className="w-4 h-4" />
-              <span>Masuk (Login)</span>
+              <span>Masuk</span>
             </button>
 
             <button
@@ -126,14 +127,30 @@ export const LoginRegister: React.FC = () => {
                 setLoginError('');
                 setRegMessage(null);
               }}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+              className={`flex-1 py-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${
                 activeTab === 'register'
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <UserPlus className="w-4 h-4" />
-              <span>Daftar Akun Baru</span>
+              <span>Daftar</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('surat');
+                setLoginError('');
+                setRegMessage(null);
+              }}
+              className={`flex-1 py-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+                activeTab === 'surat'
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Permohonan Surat</span>
             </button>
           </div>
         </div>
@@ -153,7 +170,10 @@ export const LoginRegister: React.FC = () => {
 
             <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Email Terdaftar</label>
+                <label className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1.5">
+                  <Mail className="w-3.5 h-3.5 text-emerald-400" />
+                  Email Terdaftar
+                </label>
                 <div className="relative">
                   <input
                     type="email"
@@ -161,14 +181,17 @@ export const LoginRegister: React.FC = () => {
                     placeholder="contoh: admin.malang@psbtph.go.id"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all"
                   />
                   <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Kata Sandi (Password)</label>
+                <label className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1.5">
+                  <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                  Kata Sandi
+                </label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -176,13 +199,13 @@ export const LoginRegister: React.FC = () => {
                     placeholder="Masukkan kata sandi..."
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-10 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-9 pr-10 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all"
                   />
                   <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-slate-500 hover:text-slate-300"
+                    className="absolute right-3 top-3 text-slate-500 hover:text-slate-300 transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -191,7 +214,7 @@ export const LoginRegister: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all hover:shadow-emerald-500/30"
               >
                 <LogIn className="w-4 h-4" />
                 <span>Masuk ke Sistem</span>
@@ -199,36 +222,36 @@ export const LoginRegister: React.FC = () => {
             </form>
 
             {/* QUICK DEMO LOGIN BUTTONS */}
-            <div className="pt-4 border-t border-slate-800 space-y-2">
+            <div className="pt-4 border-t border-slate-800/80 space-y-2.5">
               <div className="text-[11px] font-semibold text-slate-400 text-center">
-                Atau Gunakan Quick Login Demo (1-Click):
+                Atau Quick Login Demo (1-Click):
               </div>
 
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => switchDemoRole('admin')}
-                  className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold flex flex-col items-center gap-1 transition-all"
+                  className="p-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold flex flex-col items-center gap-1.5 transition-all hover:border-emerald-400/50"
                 >
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
                   <span>Admin</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => switchDemoRole('operator')}
-                  className="p-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-[11px] font-bold flex flex-col items-center gap-1 transition-all"
+                  className="p-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-[11px] font-bold flex flex-col items-center gap-1.5 transition-all hover:border-cyan-400/50"
                 >
-                  <UserCheck className="w-4 h-4 text-cyan-400" />
+                  <UserCheck className="w-5 h-5 text-cyan-400" />
                   <span>Operator</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => switchDemoRole('pbt', PETUGAS_PBT_LIST[0])}
-                  className="p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[11px] font-bold flex flex-col items-center gap-1 transition-all"
+                  className="p-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[11px] font-bold flex flex-col items-center gap-1.5 transition-all hover:border-amber-400/50"
                 >
-                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <Sparkles className="w-5 h-5 text-amber-400" />
                   <span>PBT</span>
                 </button>
               </div>
@@ -357,6 +380,46 @@ export const LoginRegister: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* TAB 3: PERMOHONAN SURAT */}
+        {activeTab === 'surat' && (
+          <div className="p-6 space-y-4">
+            <div className="text-center space-y-3">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-emerald-600/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center">
+                <FileText className="w-8 h-8 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-100">Form Permohonan Surat</h3>
+                <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                  Ajukan permohonan surat tanpa perlu login. Silakan isi formulir di bawah ini.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                window.location.hash = '#/form-publik';
+              }}
+              className="block w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/25 text-center transition-all hover:shadow-emerald-500/30"
+            >
+              <FileText className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+              Buka Form Permohonan Surat
+            </button>
+
+            <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/50 text-[11px] text-slate-400 space-y-1.5">
+              <div className="font-semibold text-slate-300 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                Informasi
+              </div>
+              <ul className="space-y-1 list-disc list-inside text-slate-400">
+                <li>Tidak perlu membuat akun untuk mengajukan surat</li>
+                <li>Data formulir akan diverifikasi oleh petugas</li>
+                <li>Status permohonan dapat dicek melalui form ini</li>
+              </ul>
+            </div>
           </div>
         )}
       </div>

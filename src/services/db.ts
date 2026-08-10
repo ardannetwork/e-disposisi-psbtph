@@ -1,4 +1,4 @@
-import { DisposisiSurat, UserAccount } from '../types/disposisi';
+import { DisposisiSurat, UserAccount, PublicSuratSubmission } from '../types/disposisi';
 import { firebaseDb } from './firebase';
 import {
   collection,
@@ -10,6 +10,7 @@ import {
 
 const SURAT_COLLECTION = 'disposisi_surat';
 const USERS_COLLECTION = 'users';
+const PUBLIC_SUBMISSIONS_COLLECTION = 'public_submissions';
 
 const SURAT_LOCAL_KEY = 'e_disposisi_surat_data';
 const USERS_LOCAL_KEY = 'e_disposisi_users_data';
@@ -95,6 +96,37 @@ export const deleteUserFromFirestore = async (userId: string) => {
     await deleteDoc(doc(firebaseDb, USERS_COLLECTION, userId));
   } catch (err) {
     console.error('Error deleting user from Firestore:', err);
+  }
+};
+
+export const addPublicSubmission = async (submission: Omit<PublicSuratSubmission, 'id' | 'created_at' | 'updated_at'>) => {
+  if (!firebaseDb) return;
+  try {
+    const id = `PUB-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const now = new Date().toISOString();
+    const data: PublicSuratSubmission = {
+      ...submission,
+      id,
+      created_at: now,
+      updated_at: now,
+    };
+    await setDoc(doc(firebaseDb, PUBLIC_SUBMISSIONS_COLLECTION, id), data);
+    return id;
+  } catch (err) {
+    console.error('Error adding public submission to Firestore:', err);
+    throw err;
+  }
+};
+
+export const updatePublicSubmissionInFirestore = async (
+  id: string,
+  data: Partial<PublicSuratSubmission>
+) => {
+  if (!firebaseDb) return;
+  try {
+    await updateDoc(doc(firebaseDb, PUBLIC_SUBMISSIONS_COLLECTION, id), data);
+  } catch (err) {
+    console.error('Error updating public submission in Firestore:', err);
   }
 };
 

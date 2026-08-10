@@ -44,9 +44,10 @@ e-disposisi-psbtph/
     │   └── mockData.ts             # Initial mock data pengguna & disposisi surat
     ├── services/
     │   ├── firebase.ts             # SDK Firebase initialization & config saver
+    │   ├── db.ts                   # Firestore & LocalStorage CRUD + public submissions
     │   └── docxtemplater.ts        # Generator & ekspor file .docx Mail Merge
     ├── context/
-    │   └── AuthContext.tsx         # State management global user, role, & disposisi CRUD
+    │   └── AuthContext.tsx         # State management global user, role, disposisi & public submissions
     └── components/
         ├── Navbar.tsx              # Header branding, indikator role, & logout
         ├── Sidebar.tsx             # Sidebar navigasi sesuai hak akses role
@@ -55,15 +56,17 @@ e-disposisi-psbtph/
         ├── SuratFormModal.tsx      # Modal form input surat baru & disposisi admin
         ├── BendaharaPage.tsx       # Halaman Bendahara untuk mengedit field pembayaran
         ├── UserApprovalModal.tsx   # Panel persetujuan registrasi & hapus user aktif
-        ├── LoginRegister.tsx       # Halaman Login & Registrasi pengguna baru
+        ├── LoginRegister.tsx       # Halaman Login, Registrasi, & Tab Permohonan Surat Publik
+        ├── PublicSuratForm.tsx     # Form permohonan surat publik (tanpa login)
+        ├── PublicSubmissionsReview.tsx # Halaman review permohonan publik (Operator/Admin)
         └── FirebaseConfigModal.tsx # Modal pengaturan kredensial Firebase asli
-```
+    ```
 
 ---
 
 ## 🗄️ Desain Basis Data (Cloud Firestore)
 
-Sistem menggunakan 2 koleksi utama di Cloud Firestore (atau LocalStorage pada mode Demo):
+Sistem menggunakan 3 koleksi utama di Cloud Firestore (atau LocalStorage pada mode Demo):
 
 ### 1. Koleksi Utama: `disposisi_surat`
 | Nama Field | Tipe Data | Keterangan & Validasi |
@@ -131,6 +134,18 @@ Sistem menggunakan 2 koleksi utama di Cloud Firestore (atau LocalStorage pada mo
 | `pbt_name` | String (Optional) | Nama PBT yang terhubung jika role = `pbt` |
 | `createdAt` | String (Timestamp) | Tanggal registrasi akun |
 
+### 3. Koleksi Permohonan Publik: `public_submissions`
+| Nama Field | Tipe Data | Keterangan & Validasi |
+| :--- | :--- | :--- |
+| `id` | String | Unique ID dokumen (misal: `PUB-1722849200-x7y8z9`) |
+| `surat_dari` | String | Asal instansi / kelompok tani / produsen pemohon |
+| `hal_type` | String | Jenis perihal: `Sertifikasi` atau `Wasar` |
+| `hal` | String | Rincian kategori perihal (Dropdown Pilihan) |
+| `link_dokumen` | String (URL/DataURL) | Link Google Drive PDF atau file terkompresi base64 |
+| `status` | String | Status review: `pending` | `processed` | `rejected` |
+| `created_at` | String (Timestamp) | Tanggal & waktu permohonan dibuat |
+| `updated_at` | String (Timestamp) | Tanggal & waktu permohonan terakhir diperbarui |
+
 ---
 
 ## 👥 Manajemen Hak Akses (Role-Based Access Control / RBAC)
@@ -143,19 +158,21 @@ Sistem menggunakan 2 koleksi utama di Cloud Firestore (atau LocalStorage pada mo
   * **Restriksi:** Tidak dapat mengubah data utama surat atau menghapus berkas.
 
 ### 2. Role: Operator Surat
-* **Hak Akses:**
-  * Login ke sistem dengan email & password.
-  * Menginput data surat masuk baru (`surat_dari`, `nomor_surat`, `tanggal_surat`, `diterima_tanggal`, `nomor_agenda`, `sifat`, `hal`, `link_dokumen`).
-  * Melihat rekapitulasi seluruh data surat.
-  * Mengedit data surat sebelum diproses lebih lanjut oleh Admin.
-  * Mendownload lembar disposisi `.docx` siap cetak.
+ * **Hak Akses:**
+   * Login ke sistem dengan email & password.
+   * Menginput data surat masuk baru (`surat_dari`, `nomor_surat`, `tanggal_surat`, `diterima_tanggal`, `nomor_agenda`, `sifat`, `hal`, `link_dokumen`).
+   * Melihat rekapitulasi seluruh data surat.
+   * Mengedit data surat sebelum diproses lebih lanjut oleh Admin.
+   * Mendownload lembar disposisi `.docx` siap cetak.
+   * **Review Permohonan Publik:** Meninjau daftar permohonan surat dari publik (tanpa login) di halaman **"Permohonan Publik"** dan mengubah status menjadi `processed` atau `rejected`.
 
 ### 3. Role: Admin (Koordinator UPT PSBTPH Malang)
-* **Hak Akses:**
-  * Akses penuh ke seluruh fitur dan data sistem.
-  * **Manajemen & Approval User:** Menyetujui registrasi pengguna baru, memilih role (`admin`, `operator`, `pbt`, `bendahara`), menetapkan pemetaan nama PBT, serta **menghapus akun pengguna aktif**.
-  * **Proses Disposisi:** Menentukan petugas PBT (`petugas`), mencentang instruksi disposisi (`catatan`), mengisi catatan manual, dan menetapkan tanggal disposisi.
-  * Mengedit, menghapus, serta mendownload dokumen disposisi `.docx`.
+ * **Hak Akses:**
+   * Akses penuh ke seluruh fitur dan data sistem.
+   * **Manajemen & Approval User:** Menyetujui registrasi pengguna baru, memilih role (`admin`, `operator`, `pbt`, `bendahara`), menetapkan pemetaan nama PBT, serta **menghapus akun pengguna aktif**.
+   * **Proses Disposisi:** Menentukan petugas PBT (`petugas`), mencentang instruksi disposisi (`catatan`), mengisi catatan manual, dan menetapkan tanggal disposisi.
+   * Mengedit, menghapus, serta mendownload dokumen disposisi `.docx`.
+   * **Review Permohonan Publik:** Sama seperti Operator, Admin juga dapat meninjau dan mengubah status permohonan surat publik menjadi `processed` atau `rejected`.
 
 ### 4. Role: Bendahara (Pengelola Keuangan)
 * **Hak Akses:**
@@ -176,6 +193,46 @@ Aplikasi mendukung toggle antara **Dark Mode** dan **Light Mode**. Pengguna dapa
 - Tombol toggle di navbar (kanan atas) memungkinkan switch ke **Light Mode**
 - Tema dipersist ke `localStorage` dengan key `e_disposisi_theme`
 - Semua komponen menggunakan CSS custom properties untuk mendukung kedua tema
+
+---
+
+## 📝 Form Permohonan Surat Publik (Tanpa Login)
+
+Aplikasi menyediakan form permohonan surat khusus untuk publik yang dapat diakses **tanpa perlu login atau membuat akun**. Form ini tersedia melalui tombol **"Permohonan Surat"** pada halaman login.
+
+### Alur Permohonan Publik:
+1. Pengunjung membuka halaman login aplikasi
+2. Klik tab **"Permohonan Surat"** pada tab switcher
+3. Pilih kategori perihal: **Sertifikasi Benih** atau **Wasar (Pengawasan Pemasaran)**
+4. Isi data: nama instansi/pemohon (`surat_dari`), pilih jenis perihal (`hal`), dan lampirkan dokumen PDF via URL Google Drive atau upload file
+5. File yang diupload akan dikompres otomatis (maks 2MB) untuk mengoptimalkan ukuran
+6. Verifikasi keamanan: jawab captcha aritmatika sederhana
+7. Setelah 3 detik (timer keamanan), form dapat dikirim
+8. Data disimpan ke koleksi Firestore `public_submissions` dengan **status `pending`**
+
+### Fitur Keamanan Form Publik:
+- **Honeypot field**: kolom tersembunyi untuk deteksi bot
+- **Rate limiting**: batas 1 permohonan per 5 menit per browser (localStorage)
+- **Captcha aritmatika**: verifikasi sederhana untuk mencegah spam
+- **Timer minimum**: form tidak dapat dikirim sebelum 3 detik
+
+---
+
+## 🔍 Review Permohonan Surat Publik (Operator & Admin)
+
+Setelah permohonan publik masuk dengan status `pending`, role **Operator** dan **Admin** dapat meninjau dan memproses permohonan tersebut melalui halaman **"Permohonan Publik"** di sidebar navigasi.
+
+### Fitur Halaman Review:
+- **Statistik real-time**: menampilkan jumlah total, pending, processed, dan rejected
+- **Filter status**: filter daftar berdasarkan status (Semua, Pending, Processed, Rejected)
+- **Detail lengkap**: menampilkan surat dari, kategori hal, link dokumen, dan timestamp
+- **Aksi cepat**: tombol **Processed** (hijau) dan **Rejected** (merah) untuk setiap permohonan pending
+- **Real-time sync**: perubahan status langsung terupdate di semua client yang aktif
+
+### Hak Akses Review:
+- **Operator Surat**: dapat melihat dan mengubah status permohonan publik
+- **Admin Koordinator**: dapat melihat dan mengubah status permohonan publik
+- **PBT & Bendahara**: tidak memiliki akses ke halaman review permohonan publik
 
 ---
 
@@ -212,6 +269,12 @@ Hasil build produksi akan tersimpan secara otomatis di folder `dist/`.
 - 📋 **Operator Surat**: `operator.malang@psbtph.go.id` | Password: `operator`
 - 🌱 **PBT**: `prima.candra@psbtph.go.id` | Password: `pbt`
 - 💰 **Bendahara**: `bendahara.malang@psbtph.go.id` | Password: `bendahara`
+
+### 4. Akun Demo (Quick Login):
+Sistem menyediakan tombol **Quick Login Demo (1-Click)** di halaman login untuk menguji berbagai role tanpa perlu memasukkan kredensial:
+- **Admin**: klik tombol "Admin" untuk login sebagai Koordinator Admin UPT
+- **Operator**: klik tombol "Operator" untuk login sebagai Operator Surat
+- **PBT**: klik tombol "PBT" untuk login sebagai Petugas Pengawas Benih Tanaman
 
 ---
 *Dokumentasi ini dibuat otomatis oleh AI Assistant Antigravity untuk UPT PSBTPH IV Jawa Timur Wilayah Kerja Malang.*

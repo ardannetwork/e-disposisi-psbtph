@@ -37,6 +37,17 @@ export interface DisposisiSurat {
   updated_at: string;
 }
 
+export interface PublicSuratSubmission {
+  id: string;
+  surat_dari: string;
+  hal_type: HalType;
+  hal: string;
+  link_dokumen: string;
+  status: 'pending' | 'processed' | 'rejected';
+  created_at: string;
+  updated_at: string;
+}
+
 export const HAL_SERTIFIKASI = [
   'Pemeriksaan Pendahuluan',
   'Pemeriksaan Fase Vegetatif',

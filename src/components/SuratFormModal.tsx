@@ -12,12 +12,15 @@ import {
 import { X, Save, FileText, CheckSquare, Calendar, User, Link as LinkIcon, Upload } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 import imageCompression from 'browser-image-compression';
+import { getDocument } from 'pdfjs-dist';
+import jsPDF from 'jspdf';
 
 interface SuratFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialData?: DisposisiSurat | null;
   mode?: 'create' | 'edit' | 'disposisi';
+  onSuccess?: () => void;
 }
 
 export const SuratFormModal: React.FC<SuratFormModalProps> = ({
@@ -25,6 +28,7 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
   onClose,
   initialData,
   mode = 'create',
+  onSuccess,
 }) => {
   const { currentUser, addDisposisi, updateDisposisi } = useAuth();
 
@@ -53,6 +57,28 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
   const [isCompressing, setIsCompressing] = useState(false);
   const [originalSize, setOriginalSize] = useState(0);
   const [compressedSize, setCompressedSize] = useState(0);
+  const [isFileTooLarge, setIsFileTooLarge] = useState(false);
+  const [compressProgress, setCompressProgress] = useState(0);
+  const MAX_FILE_SIZE = 2 * 1024 * 1024;
+
+  useEffect(() => {
+    if (isCompressing) {
+      setCompressProgress(0);
+      const interval = setInterval(() => {
+        setCompressProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(interval);
+            return 90;
+          }
+          return prev + Math.random() * 15;
+        });
+      }, 200);
+      return () => clearInterval(interval);
+    } else if (compressProgress > 0 && compressProgress < 100) {
+      setCompressProgress(100);
+      setTimeout(() => setCompressProgress(0), 500);
+    }
+  }, [isCompressing]);
 
   useEffect(() => {
     if (initialData) {
@@ -76,10 +102,10 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
       setFilePreview(initialData.link_dokumen || '');
       setOriginalSize(0);
       setCompressedSize(0);
+      setIsFileTooLarge(false);
+      setCompressProgress(0);
     } else {
-      const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const randomSuffix = Math.floor(100 + Math.random() * 900);
-      setNomorAgenda(`AGD/${todayStr}/${randomSuffix}`);
+      setNomorAgenda('');
       setSuratDari('');
       setNomorSurat('');
       setTanggalSurat(new Date().toISOString().split('T')[0]);
@@ -97,6 +123,8 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
       setFilePreview('');
       setOriginalSize(0);
       setCompressedSize(0);
+      setIsFileTooLarge(false);
+      setCompressProgress(0);
     }
   }, [initialData, isOpen]);
 
@@ -107,6 +135,59 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
   };
 
   const compressPdf = async (file: File): Promise<{ base64: string; size: number }> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await getDocument({ data: arrayBuffer }).promise;
+      const pageCount = pdf.numPages;
+
+      const pdfOutput = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      for (let i = 1; i <= pageCount; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 1.5 });
+
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Canvas context unavailable');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        await page.render({ canvasContext: context, viewport }).promise;
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.7);
+        const pdfWidth = 210;
+        const pdfHeight = pdfWidth * (viewport.height / viewport.width);
+
+        if (i > 1) {
+          pdfOutput.addPage();
+        }
+
+        pdfOutput.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+
+        canvas.remove();
+      }
+
+      const pdfBytes = pdfOutput.output('arraybuffer');
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      return { base64, size: blob.size };
+    } catch (error) {
+      console.error('PDF re-render compression failed, falling back to pdf-lib:', error);
+      return compressPdfFallback(file);
+    }
+  };
+
+  const compressPdfFallback = async (file: File): Promise<{ base64: string; size: number }> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdfDoc = await PDFDocument.load(arrayBuffer);
     const compressedPdfBytes = await pdfDoc.save({
@@ -165,6 +246,7 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
       setCompressedSize(result.size);
       setLinkDokumen(result.base64);
       setFilePreview(result.base64);
+      setIsFileTooLarge(result.size > MAX_FILE_SIZE);
 
       const response = await fetch(result.base64);
       const blob = await response.blob();
@@ -182,8 +264,10 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
     if (mode === 'url') {
       setSelectedFile(null);
       setFilePreview('');
+      setIsFileTooLarge(false);
     } else {
       setLinkDokumen('');
+      setIsFileTooLarge(false);
     }
   };
 
@@ -201,6 +285,11 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
 
     if (!suratDari || !nomorSurat || !tanggalSurat || !nomorAgenda) {
       alert('Mohon lengkapi field mandatory (Surat Dari, Nomor Surat, Tanggal Surat, Nomor Agenda)');
+      return;
+    }
+
+    if (isFileTooLarge) {
+      alert('File yang diupload melebihi batas maksimal 2MB. Silakan pilih file yang lebih kecil atau gunakan link URL.');
       return;
     }
 
@@ -226,6 +315,10 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
       updateDisposisi(initialData.id, payload);
     } else {
       addDisposisi(payload);
+    }
+
+    if (onSuccess) {
+      onSuccess();
     }
 
     onClose();
@@ -429,14 +522,17 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
                 <button
                   type="button"
                   onClick={() => handleDocModeToggle('file')}
+                  disabled={isFileTooLarge}
                   className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                    docInputMode === 'file'
-                      ? 'bg-amber-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
+                    isFileTooLarge
+                      ? 'bg-rose-600 text-white cursor-not-allowed'
+                      : docInputMode === 'file'
+                        ? 'bg-amber-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   <Upload className="w-3.5 h-3.5 inline mr-1" />
-                  Upload File
+                  {isFileTooLarge ? 'File Terlalu Besar' : 'Upload File'}
                 </button>
               </div>
 
@@ -457,15 +553,46 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
               {/* FILE MODE */}
               {docInputMode === 'file' && (
                 <div>
-                  <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-slate-700 rounded-xl cursor-pointer hover:border-slate-500 hover:bg-slate-800/50 transition-colors relative overflow-hidden">
-                    {isCompressing ? (
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mb-2"></div>
-                        <p className="text-xs text-slate-400 font-medium">
-                          Mengompresi file...
-                        </p>
-                      </div>
-                    ) : filePreview ? (
+                  <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer hover:bg-slate-800/50 transition-colors relative overflow-hidden ${
+                    isFileTooLarge ? 'border-rose-500 bg-rose-500/10' : 'border-slate-700 hover:border-slate-500'
+                  }`}>
+                     {isCompressing ? (
+                       <div className="flex flex-col items-center justify-center w-full p-4">
+                         <div className="w-full max-w-xs space-y-3">
+                           <div className="flex items-center justify-center gap-3 mb-2">
+                             <div className="relative">
+                               <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-700 border-t-emerald-500"></div>
+                               <div className="absolute inset-0 flex items-center justify-center">
+                                 <span className="text-[10px] font-bold text-emerald-400">
+                                   {Math.min(Math.round(compressProgress), 100)}%
+                                 </span>
+                               </div>
+                             </div>
+                             <div className="text-left">
+                               <p className="text-xs font-semibold text-slate-200">
+                                 {selectedFile?.type === 'application/pdf' ? 'Mengompresi PDF...' : 'Mengompresi Gambar...'}
+                               </p>
+                               <p className="text-[10px] text-slate-400">
+                                 {compressProgress < 30 ? 'Membaca file...' : compressProgress < 70 ? 'Memproses kompresi...' : 'Menyelesaikan...'}
+                               </p>
+                             </div>
+                           </div>
+                           
+                           <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700">
+                             <div
+                               className="bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-400 h-2.5 rounded-full transition-all duration-300 ease-out relative"
+                               style={{ width: `${Math.min(compressProgress, 100)}%` }}
+                             >
+                               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+                             </div>
+                           </div>
+                           
+                           <p className="text-[10px] text-slate-500 text-center">
+                             {(originalSize / 1024 / 1024).toFixed(2)} MB → Memproses...
+                           </p>
+                         </div>
+                       </div>
+                     ) : filePreview ? (
                       <div className="flex items-center gap-3 p-2 w-full">
                         {filePreview.startsWith('data:image') ? (
                           <img src={filePreview} alt="Preview" className="w-12 h-12 object-cover rounded-lg border border-slate-700" />
@@ -491,6 +618,11 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
                                 (-{((1 - compressedSize / originalSize) * 100).toFixed(0)}%)
                               </span>
                             )}
+                            {isFileTooLarge && (
+                              <span className="text-rose-400 ml-1 font-semibold">
+                                (Melebihi batas {MAX_FILE_SIZE / 1024 / 1024}MB)
+                              </span>
+                            )}
                           </p>
                         </div>
                         <button
@@ -502,6 +634,7 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
                             setLinkDokumen('');
                             setOriginalSize(0);
                             setCompressedSize(0);
+                            setIsFileTooLarge(false);
                           }}
                           className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
                         >
