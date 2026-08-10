@@ -2,6 +2,7 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 export interface FirebaseConfig {
   apiKey: string;
@@ -51,11 +52,12 @@ export const clearFirebaseConfig = () => {
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
+let storage: FirebaseStorage | null = null;
 
-export const initFirebase = (config?: FirebaseConfig | null): { app: FirebaseApp | null; auth: Auth | null; db: Firestore | null } => {
+export const initFirebase = (config?: FirebaseConfig | null): { app: FirebaseApp | null; auth: Auth | null; db: Firestore | null; storage: FirebaseStorage | null } => {
   const cfg = config || getSavedFirebaseConfig();
   if (!cfg || !cfg.apiKey || !cfg.projectId) {
-    return { app: null, auth: null, db: null };
+    return { app: null, auth: null, db: null, storage: null };
   }
 
   try {
@@ -66,10 +68,11 @@ export const initFirebase = (config?: FirebaseConfig | null): { app: FirebaseApp
     }
     auth = getAuth(app);
     db = getFirestore(app);
-    return { app, auth, db };
+    storage = getStorage(app);
+    return { app, auth, db, storage };
   } catch (err) {
     console.error('Error initializing Firebase', err);
-    return { app: null, auth: null, db: null };
+    return { app: null, auth: null, db: null, storage: null };
   }
 };
 
@@ -77,3 +80,4 @@ const instances = initFirebase();
 export const firebaseApp = instances.app;
 export const firebaseAuth = instances.auth;
 export const firebaseDb = instances.db;
+export const firebaseStorage = instances.storage;

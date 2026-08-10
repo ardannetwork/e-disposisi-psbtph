@@ -3,9 +3,11 @@ import { PDFDocument } from 'pdf-lib';
 import imageCompression from 'browser-image-compression';
 import { X, Save, FileText, Link as LinkIcon, Upload } from 'lucide-react';
 import { HAL_SERTIFIKASI, HAL_WASAR, HalType } from '../types/disposisi';
-import { addPublicSubmission } from '../services/db';
+import { addPublicSubmission, uploadFileToStorage } from '../services/db';
+import { firebaseDb } from '../services/firebase';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
+const MAX_BASE64_SIZE = 900 * 1024;
 const MIN_FORM_TIME_MS = 3000;
 const RATE_LIMIT_KEY = 'public_form_last_submit';
 const RATE_LIMIT_MS = 5 * 60 * 1000;
@@ -38,6 +40,8 @@ export const PublicSuratForm: React.FC = () => {
   const [isHoneypotFilled, setIsHoneypotFilled] = useState(false);
   const honeypotRef = useRef<HTMLInputElement>(null);
 
+  const isFirebaseActive = !!firebaseDb;
+
   useEffect(() => {
     const interval = setInterval(() => {
       const elapsed = Date.now() - formStartTime;
@@ -56,7 +60,7 @@ export const PublicSuratForm: React.FC = () => {
     return timeLeft <= 0 && !isSubmitting && !isCompressing;
   };
 
-  const compressPdf = async (file: File): Promise<{ base64: string; size: number }> => {
+  const compressPdf = async (file: File): Promise<{ file: File; size: number }> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdfDoc = await PDFDocument.load(arrayBuffer);
     const compressedPdfBytes = await pdfDoc.save({
@@ -66,28 +70,17 @@ export const PublicSuratForm: React.FC = () => {
     const uint8 = new Uint8Array(compressedPdfBytes.length);
     uint8.set(compressedPdfBytes);
     const blob = new Blob([uint8], { type: 'application/pdf' });
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-    return { base64, size: blob.size };
+    const compressedFile = new File([blob], file.name, { type: file.type });
+    return { file: compressedFile, size: blob.size };
   };
 
-  const compressImage = async (file: File): Promise<{ base64: string; size: number }> => {
+  const compressImage = async (file: File): Promise<{ file: File; size: number }> => {
     const compressedFile = await imageCompression(file, {
       maxSizeMB: 1,
       maxWidthOrHeight: 1920,
       useWebWorker: true,
     });
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(compressedFile);
-    });
-    return { base64, size: compressedFile.size };
+    return { file: compressedFile, size: compressedFile.size };
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,7 +97,7 @@ export const PublicSuratForm: React.FC = () => {
     setOriginalSize(file.size);
 
     try {
-      let result: { base64: string; size: number };
+      let result: { file: File; size: number };
       if (file.type === 'application/pdf') {
         result = await compressPdf(file);
       } else {
@@ -112,13 +105,9 @@ export const PublicSuratForm: React.FC = () => {
       }
 
       setCompressedSize(result.size);
-      setLinkDokumen(result.base64);
-      setFilePreview(result.base64);
+      setSelectedFile(result.file);
+      setFilePreview(URL.createObjectURL(result.file));
       setIsFileTooLarge(result.size > MAX_FILE_SIZE);
-
-      const response = await fetch(result.base64);
-      const blob = await response.blob();
-      setSelectedFile(new File([blob], file.name, { type: file.type }));
     } catch (error) {
       console.error('Compression error:', error);
       alert('Gagal memproses file. Coba file lain.');
@@ -159,12 +148,28 @@ export const PublicSuratForm: React.FC = () => {
     setIsSubmitting(true);
     setSubmitError('');
 
+    let finalLinkDokumen = linkDokumen;
+
     try {
+      if (selectedFile && isFirebaseActive) {
+        const timestamp = Date.now();
+        const extension = selectedFile.name.split('.').pop() || 'bin';
+        const storagePath = `public-submissions/${timestamp}-${Math.random().toString(36).slice(2, 9)}.${extension}`;
+        finalLinkDokumen = await uploadFileToStorage(selectedFile, storagePath);
+      } else if (selectedFile && !isFirebaseActive) {
+        const reader = new FileReader();
+        finalLinkDokumen = await new Promise<string>((resolve, reject) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(selectedFile);
+        });
+      }
+
       await addPublicSubmission({
         surat_dari: suratDari,
         hal_type: halType,
         hal: hal,
-        link_dokumen: linkDokumen,
+        link_dokumen: finalLinkDokumen,
         status: 'pending',
       });
 
@@ -185,6 +190,9 @@ export const PublicSuratForm: React.FC = () => {
     setLinkDokumen('');
     setDocInputMode('url');
     setSelectedFile(null);
+    if (filePreview && filePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(filePreview);
+    }
     setFilePreview('');
     setOriginalSize(0);
     setCompressedSize(0);
@@ -231,6 +239,12 @@ export const PublicSuratForm: React.FC = () => {
             <p className="text-xs text-slate-400">UPT PSBTPH IV Jatim - Wilayah Kerja Malang</p>
           </div>
         </div>
+
+        {!isFirebaseActive && (
+          <div className="mx-6 mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
+            Mode Database Lokal aktif. Data permohonan akan disimpan di perangkat ini dan dapat dilihat oleh Operator/Admin pada perangkat yang sama.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {submitError && (
@@ -304,7 +318,7 @@ export const PublicSuratForm: React.FC = () => {
               <div className="flex rounded-xl bg-slate-800 p-1 border border-slate-700 mb-3">
                 <button
                   type="button"
-                  onClick={() => setDocInputMode('url')}
+                  onClick={() => { setDocInputMode('url'); setLinkDokumen(''); setSelectedFile(null); setFilePreview(''); setOriginalSize(0); setCompressedSize(0); setIsFileTooLarge(false); }}
                   className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                     docInputMode === 'url'
                       ? 'bg-emerald-600 text-white shadow-md'
@@ -316,7 +330,7 @@ export const PublicSuratForm: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDocInputMode('file')}
+                  onClick={() => { setDocInputMode('file'); setLinkDokumen(''); }}
                   className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                     docInputMode === 'file'
                       ? 'bg-amber-600 text-white shadow-md'
@@ -351,15 +365,15 @@ export const PublicSuratForm: React.FC = () => {
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mb-2"></div>
                         <p className="text-xs text-slate-400 font-medium">Mengompresi file...</p>
                       </div>
-                    ) : filePreview ? (
-                      <div className="flex items-center gap-3 p-2 w-full">
-                        {filePreview.startsWith('data:image') ? (
-                          <img src={filePreview} alt="Preview" className="w-12 h-12 object-cover rounded-lg border border-slate-700" />
-                        ) : (
-                          <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center">
-                            <FileText className="w-6 h-6 text-slate-300" />
-                          </div>
-                        )}
+                     ) : filePreview ? (
+                       <div className="flex items-center gap-3 p-2 w-full">
+                         {(filePreview.startsWith('data:image') || (filePreview.startsWith('blob:') && selectedFile?.type.startsWith('image/'))) ? (
+                           <img src={filePreview} alt="Preview" className="w-12 h-12 object-cover rounded-lg border border-slate-700" />
+                         ) : (
+                           <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center">
+                             <FileText className="w-6 h-6 text-slate-300" />
+                           </div>
+                         )}
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-semibold text-slate-200 truncate">{selectedFile?.name}</p>
                           <p className="text-[10px] text-slate-400">

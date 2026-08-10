@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { PublicSuratSubmission } from '../types/disposisi';
 import { CheckCircle2, XCircle, FileText, ExternalLink, Clock, Filter } from 'lucide-react';
+import { firebaseDb } from '../services/firebase';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 type ReviewStatus = 'all' | 'pending' | 'processed' | 'rejected';
 
@@ -9,14 +11,42 @@ export const PublicSubmissionsReview: React.FC = () => {
   const { publicSubmissionsList, updatePublicSubmissionStatus, currentUser } = useAuth();
   const [filter, setFilter] = useState<ReviewStatus>('all');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [firestoreItems, setFirestoreItems] = useState<PublicSuratSubmission[]>([]);
+  const [listenerError, setListenerError] = useState<string | null>(null);
 
   const isOperator = currentUser?.role === 'operator';
   const isAdmin = currentUser?.role === 'admin';
   const canReview = isOperator || isAdmin;
 
+  useEffect(() => {
+    if (!firebaseDb || !currentUser) return;
+
+    setListenerError(null);
+    const q = query(collection(firebaseDb, 'public_submissions'), orderBy('created_at', 'desc'));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const items: PublicSuratSubmission[] = [];
+        snapshot.forEach((docSnap) => {
+          items.push({ id: docSnap.id, ...docSnap.data() } as PublicSuratSubmission);
+        });
+        setFirestoreItems(items);
+      },
+      (err) => {
+        console.warn('PublicSubmissionsReview direct listener error:', err);
+        setListenerError(err instanceof Error ? err.message : 'Gagal memuat data dari Firestore');
+      }
+    );
+
+    return () => unsubscribe();
+  }, [firebaseDb, currentUser]);
+
+  const merged = firestoreItems.length > 0 ? firestoreItems : publicSubmissionsList;
+
   const filtered = filter === 'all'
-    ? publicSubmissionsList
-    : publicSubmissionsList.filter((s) => s.status === filter);
+    ? merged
+    : merged.filter((s) => s.status === filter);
 
   const sorted = [...filtered].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
@@ -122,29 +152,39 @@ export const PublicSubmissionsReview: React.FC = () => {
           </div>
         </div>
 
+        {/* DEBUG INFO */}
+        {listenerError && (
+          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+            <strong>Debug:</strong> {listenerError}
+          </div>
+        )}
+        <div className="text-[10px] text-slate-500">
+          Context: {publicSubmissionsList.length} | Firestore direct: {firestoreItems.length} | Merged: {merged.length}
+        </div>
+
         {/* STATS */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center">
             <div className="text-2xl font-extrabold text-white">
-              {publicSubmissionsList.length}
+              {merged.length}
             </div>
             <div className="text-[11px] text-slate-400 font-semibold mt-1">Total</div>
           </div>
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center">
             <div className="text-2xl font-extrabold text-amber-400">
-              {publicSubmissionsList.filter((s) => s.status === 'pending').length}
+              {merged.filter((s) => s.status === 'pending').length}
             </div>
             <div className="text-[11px] text-slate-400 font-semibold mt-1">Pending</div>
           </div>
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center">
             <div className="text-2xl font-extrabold text-emerald-400">
-              {publicSubmissionsList.filter((s) => s.status === 'processed').length}
+              {merged.filter((s) => s.status === 'processed').length}
             </div>
             <div className="text-[11px] text-slate-400 font-semibold mt-1">Processed</div>
           </div>
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center">
             <div className="text-2xl font-extrabold text-rose-400">
-              {publicSubmissionsList.filter((s) => s.status === 'rejected').length}
+              {merged.filter((s) => s.status === 'rejected').length}
             </div>
             <div className="text-[11px] text-slate-400 font-semibold mt-1">Rejected</div>
           </div>

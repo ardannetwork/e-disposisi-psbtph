@@ -1,5 +1,5 @@
 import { DisposisiSurat, UserAccount, PublicSuratSubmission } from '../types/disposisi';
-import { firebaseDb } from './firebase';
+import { firebaseDb, firebaseStorage } from './firebase';
 import {
   collection,
   doc,
@@ -7,6 +7,7 @@ import {
   updateDoc,
   deleteDoc,
 } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const SURAT_COLLECTION = 'disposisi_surat';
 const USERS_COLLECTION = 'users';
@@ -14,6 +15,7 @@ const PUBLIC_SUBMISSIONS_COLLECTION = 'public_submissions';
 
 const SURAT_LOCAL_KEY = 'e_disposisi_surat_data';
 const USERS_LOCAL_KEY = 'e_disposisi_users_data';
+const PUBLIC_SUBMISSIONS_LOCAL_KEY = 'e_disposisi_public_submissions_data';
 
 // --- Local Storage Helpers ---
 export const getLocalDisposisi = (): DisposisiSurat[] => {
@@ -42,6 +44,20 @@ export const getLocalUsers = (): UserAccount[] => {
 
 export const saveLocalUsers = (data: UserAccount[]) => {
   localStorage.setItem(USERS_LOCAL_KEY, JSON.stringify(data));
+};
+
+export const getLocalPublicSubmissions = (): PublicSuratSubmission[] => {
+  try {
+    const saved = localStorage.getItem(PUBLIC_SUBMISSIONS_LOCAL_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (e) {
+    console.error('Error loading local public submissions data', e);
+    return [];
+  }
+};
+
+export const saveLocalPublicSubmissions = (data: PublicSuratSubmission[]) => {
+  localStorage.setItem(PUBLIC_SUBMISSIONS_LOCAL_KEY, JSON.stringify(data));
 };
 
 // --- Firestore CRUD Operations ---
@@ -99,35 +115,56 @@ export const deleteUserFromFirestore = async (userId: string) => {
   }
 };
 
+export const uploadFileToStorage = async (file: File, path: string): Promise<string> => {
+  if (!firebaseStorage) throw new Error('Firebase Storage tidak aktif');
+  const storageRef = ref(firebaseStorage, path);
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+};
+
 export const addPublicSubmission = async (submission: Omit<PublicSuratSubmission, 'id' | 'created_at' | 'updated_at'>) => {
-  if (!firebaseDb) return;
-  try {
-    const id = `PUB-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    const now = new Date().toISOString();
-    const data: PublicSuratSubmission = {
-      ...submission,
-      id,
-      created_at: now,
-      updated_at: now,
-    };
-    await setDoc(doc(firebaseDb, PUBLIC_SUBMISSIONS_COLLECTION, id), data);
-    return id;
-  } catch (err) {
-    console.error('Error adding public submission to Firestore:', err);
-    throw err;
+  const id = `PUB-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  const now = new Date().toISOString();
+  const data: PublicSuratSubmission = {
+    ...submission,
+    id,
+    created_at: now,
+    updated_at: now,
+  };
+
+  if (firebaseDb) {
+    try {
+      await setDoc(doc(firebaseDb, PUBLIC_SUBMISSIONS_COLLECTION, id), data);
+      return id;
+    } catch (err) {
+      console.error('Error adding public submission to Firestore:', err);
+      const local = getLocalPublicSubmissions();
+      saveLocalPublicSubmissions([data, ...local]);
+      return id;
+    }
   }
+
+  const local = getLocalPublicSubmissions();
+  saveLocalPublicSubmissions([data, ...local]);
+  return id;
 };
 
 export const updatePublicSubmissionInFirestore = async (
   id: string,
   data: Partial<PublicSuratSubmission>
 ) => {
-  if (!firebaseDb) return;
-  try {
-    await updateDoc(doc(firebaseDb, PUBLIC_SUBMISSIONS_COLLECTION, id), data);
-  } catch (err) {
-    console.error('Error updating public submission in Firestore:', err);
+  if (firebaseDb) {
+    try {
+      await updateDoc(doc(firebaseDb, PUBLIC_SUBMISSIONS_COLLECTION, id), data);
+    } catch (err) {
+      console.error('Error updating public submission in Firestore:', err);
+    }
   }
+
+  const local = getLocalPublicSubmissions();
+  saveLocalPublicSubmissions(
+    local.map((item) => (item.id === id ? { ...item, ...data } : item))
+  );
 };
 
 // --- Database Export / Backup & Restore ---

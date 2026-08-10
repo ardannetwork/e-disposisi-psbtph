@@ -7,6 +7,8 @@ import {
   saveLocalDisposisi,
   getLocalUsers,
   saveLocalUsers,
+  getLocalPublicSubmissions,
+  saveLocalPublicSubmissions,
   syncDisposisiToFirestore,
   updateDisposisiInFirestore,
   deleteDisposisiFromFirestore,
@@ -65,7 +67,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved.length > 0 ? saved : INITIAL_DISPOSISI_SURAT;
   });
 
-  const [publicSubmissionsList, setPublicSubmissionsList] = useState<PublicSuratSubmission[]>([]);
+  const [publicSubmissionsList, setPublicSubmissionsList] = useState<PublicSuratSubmission[]>(() => {
+    if (!firebaseDb) {
+      const saved = getLocalPublicSubmissions();
+      return saved.length > 0 ? saved : [];
+    }
+    return [];
+  });
 
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
     const saved = localStorage.getItem(CURRENT_USER_STORAGE_KEY);
@@ -93,6 +101,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     saveLocalDisposisi(disposisiList);
   }, [disposisiList]);
+
+  useEffect(() => {
+    if (!firebaseDb) {
+      saveLocalPublicSubmissions(publicSubmissionsList);
+    }
+  }, [publicSubmissionsList]);
 
   useEffect(() => {
     if (currentUser) {
@@ -124,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sync with Firestore Realtime listeners
   useEffect(() => {
-    if (!firebaseDb) return;
+    if (!firebaseDb || !currentUser) return;
     try {
       const unsubSurat = onSnapshot(collection(firebaseDb, 'disposisi_surat'), (snapshot) => {
         const items: DisposisiSurat[] = [];
@@ -134,6 +148,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (items.length > 0) {
           setDisposisiList(items);
         }
+      }, (err) => {
+        console.warn('Firestore surat listener error:', err);
       });
 
       const unsubUsers = onSnapshot(collection(firebaseDb, 'users'), (snapshot) => {
@@ -141,9 +157,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         snapshot.forEach((docSnap) => {
           users.push({ id: docSnap.id, ...docSnap.data() } as UserAccount);
         });
-        if (users.length > 0) {
-          setUsersList(users);
-        }
+        setUsersList(users);
+      }, (err) => {
+        console.warn('Firestore users listener error:', err);
       });
 
       const unsubPublic = onSnapshot(collection(firebaseDb, 'public_submissions'), (snapshot) => {
@@ -151,9 +167,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         snapshot.forEach((docSnap) => {
           items.push({ id: docSnap.id, ...docSnap.data() } as PublicSuratSubmission);
         });
-        if (items.length > 0) {
-          setPublicSubmissionsList(items);
-        }
+        setPublicSubmissionsList(items);
+      }, (err) => {
+        console.warn('Firestore public submissions listener error:', err);
       });
 
       return () => {
@@ -164,7 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) {
       console.warn('Firestore sync error fallback to local database', err);
     }
-  }, [isFirebaseActive]);
+  }, [isFirebaseActive, currentUser]);
 
   // LOGIN FUNCTION
   const login = (email: string, pass: string) => {
