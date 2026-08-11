@@ -39,6 +39,14 @@ export const PublicSuratForm: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState(Math.ceil(MIN_FORM_TIME_MS / 1000));
   const [isHoneypotFilled, setIsHoneypotFilled] = useState(false);
   const honeypotRef = useRef<HTMLInputElement>(null);
+  const [rateLimitTimeLeft, setRateLimitTimeLeft] = useState(() => {
+    const lastSubmit = localStorage.getItem(RATE_LIMIT_KEY);
+    if (lastSubmit) {
+      const remaining = Math.ceil((RATE_LIMIT_MS - (Date.now() - parseInt(lastSubmit))) / 1000);
+      return Math.max(0, remaining);
+    }
+    return 0;
+  });
 
   const isFirebaseActive = !!firebaseDb;
 
@@ -47,17 +55,21 @@ export const PublicSuratForm: React.FC = () => {
       const elapsed = Date.now() - formStartTime;
       const remaining = Math.max(0, Math.ceil((MIN_FORM_TIME_MS - elapsed) / 1000));
       setTimeLeft(remaining);
+
+      // Update rate limit countdown secara realtime
+      const lastSubmit = localStorage.getItem(RATE_LIMIT_KEY);
+      if (lastSubmit) {
+        const rateLimitRemaining = Math.max(0, Math.ceil((RATE_LIMIT_MS - (Date.now() - parseInt(lastSubmit))) / 1000));
+        setRateLimitTimeLeft(rateLimitRemaining);
+      } else {
+        setRateLimitTimeLeft(0);
+      }
     }, 1000);
     return () => clearInterval(interval);
   }, [formStartTime]);
 
   const canSubmit = () => {
-    const now = Date.now();
-    const lastSubmit = localStorage.getItem(RATE_LIMIT_KEY);
-    if (lastSubmit && now - parseInt(lastSubmit) < RATE_LIMIT_MS) {
-      return false;
-    }
-    return timeLeft <= 0 && !isSubmitting && !isCompressing;
+    return rateLimitTimeLeft <= 0 && timeLeft <= 0 && !isSubmitting && !isCompressing;
   };
 
   const compressPdf = async (file: File): Promise<{ file: File; size: number }> => {
@@ -201,6 +213,9 @@ export const PublicSuratForm: React.FC = () => {
     setCaptchaAnswer('');
     setSubmitSuccess(false);
     setSubmitError('');
+    // Hapus rate limit agar user dapat mengirim permohonan baru
+    localStorage.removeItem(RATE_LIMIT_KEY);
+    setRateLimitTimeLeft(0);
   };
 
   if (submitSuccess) {
@@ -446,10 +461,12 @@ export const PublicSuratForm: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2 text-[10px] text-slate-500">
-              <div className={`w-2 h-2 rounded-full ${timeLeft <= 0 ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`}></div>
+              <div className={`w-2 h-2 rounded-full ${canSubmit() ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`}></div>
               <span>
                 {timeLeft > 0
                   ? `Form dapat dikirim dalam ${timeLeft} detik...`
+                  : rateLimitTimeLeft > 0
+                  ? `Tunggu ${rateLimitTimeLeft} detik sebelum mengirim permohonan baru...`
                   : 'Form siap dikirim'}
               </span>
             </div>
