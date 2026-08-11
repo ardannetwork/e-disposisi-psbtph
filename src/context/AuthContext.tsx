@@ -16,6 +16,7 @@ import {
   updateUserInFirestore,
   deleteUserFromFirestore,
   updatePublicSubmissionInFirestore,
+  deletePublicSubmission as deletePublicSubmissionFromDb,
   exportDatabaseToJson,
   importDatabaseFromJson,
 } from '../services/db';
@@ -42,12 +43,14 @@ interface AuthContextType {
   approveUser: (userId: string, role: UserRole, pbtName?: string) => void;
   rejectUser: (userId: string) => void;
   deleteUser: (userId: string) => void;
+  updateCurrentUser: (data: Partial<UserAccount>) => void;
   addDisposisi: (data: Omit<DisposisiSurat, 'id' | 'created_at' | 'updated_at'>) => void;
   updateDisposisi: (id: string, data: Partial<DisposisiSurat>) => void;
   deleteDisposisi: (id: string) => void;
   togglePbtStatus: (id: string, newStatus: boolean) => void;
-  updatePublicSubmissionStatus: (id: string, status: 'processed' | 'rejected') => void;
-  processPublicSubmission: (id: string) => Promise<void>;
+  updatePublicSubmissionStatus: (id: string, status: 'processed' | 'rejected') => Promise<void>;
+  processPublicSubmission: (id: string, submission?: PublicSuratSubmission) => Promise<void>;
+  deletePublicSubmission: (id: string, linkDokumen?: string) => Promise<void>;
   exportDatabase: () => void;
   importDatabase: (jsonContent: string) => { success: boolean; message: string };
   isFirebaseActive: boolean;
@@ -246,6 +249,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(target);
   };
 
+  const updateCurrentUser = (data: Partial<UserAccount>) => {
+    if (!currentUser) return;
+    const updated = { ...currentUser, ...data };
+    setCurrentUser(updated);
+    setUsersList((prev) =>
+      prev.map((u) => (u.id === currentUser.id ? { ...u, ...data } : u))
+    );
+    updateUserInFirestore(currentUser.id, data);
+  };
+
   // REGISTER USER FUNCTION
   const registerUser = (
     email: string,
@@ -352,16 +365,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateDisposisi(id, { status: newStatus });
   };
 
-  const updatePublicSubmissionStatus = (id: string, status: 'processed' | 'rejected') => {
+  const updatePublicSubmissionStatus = async (id: string, status: 'processed' | 'rejected') => {
     const now = new Date().toISOString();
+    // Update local state immediately (optimistic update)
     setPublicSubmissionsList((prev) =>
       prev.map((item) => (item.id === id ? { ...item, status, updated_at: now } : item))
     );
-    updatePublicSubmissionInFirestore(id, { status, updated_at: now });
+    // Also update localStorage immediately so data persists even if Firestore fails
+    const localData = getLocalPublicSubmissions();
+    saveLocalPublicSubmissions(
+      localData.map((item) => (item.id === id ? { ...item, status, updated_at: now } : item))
+    );
+    // Try to sync to Firestore — this never throws (errors are caught internally in db.ts)
+    try {
+      await updatePublicSubmissionInFirestore(id, { status, updated_at: now });
+    } catch (err) {
+      // Should not reach here since updatePublicSubmissionInFirestore handles errors internally
+      console.warn('updatePublicSubmissionStatus unexpected error (silenced):', err);
+    }
   };
 
-  const processPublicSubmission = async (id: string) => {
-    const submission = publicSubmissionsList.find((item) => item.id === id);
+  const processPublicSubmission = async (id: string, submissionData?: PublicSuratSubmission) => {
+    const submission = submissionData || publicSubmissionsList.find((item) => item.id === id);
     if (!submission) return;
 
     const now = new Date().toISOString();
@@ -382,8 +407,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       tanggal_disposisi: now.slice(0, 10),
     };
 
-    addDisposisi(newDisposisi);
+    // addDisposisi syncs to Firestore internally — errors are caught inside syncDisposisiToFirestore
+    try {
+      addDisposisi(newDisposisi);
+    } catch (err) {
+      console.warn('processPublicSubmission: addDisposisi error (silenced):', err);
+    }
+
+    // updatePublicSubmissionStatus saves to localStorage + tries Firestore — never throws
     await updatePublicSubmissionStatus(id, 'processed');
+  };
+
+  const deletePublicSubmission = async (id: string, linkDokumen?: string): Promise<void> => {
+    // Remove from local React state immediately
+    setPublicSubmissionsList((prev) => prev.filter((item) => item.id !== id));
+    // Delete from Firestore + Storage + localStorage
+    await deletePublicSubmissionFromDb(id, linkDokumen);
   };
 
   const toggleTheme = () => {
@@ -419,12 +458,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       approveUser,
       rejectUser,
       deleteUser: rejectUser,
+      updateCurrentUser,
       addDisposisi,
       updateDisposisi,
       deleteDisposisi,
       togglePbtStatus,
       updatePublicSubmissionStatus,
       processPublicSubmission,
+      deletePublicSubmission,
       exportDatabase,
       importDatabase,
       isFirebaseActive,

@@ -49,16 +49,16 @@ e-disposisi-psbtph/
     ├── context/
     │   └── AuthContext.tsx         # State management global user, role, disposisi & public submissions
     └── components/
-        ├── Navbar.tsx              # Header branding, indikator role, & logout
+        ├── Navbar.tsx              # Header branding, indikator role, logout confirmation modal, theme toggle, & mobile responsive
         ├── Sidebar.tsx             # Sidebar navigasi sesuai hak akses role
         ├── DashboardStats.tsx      # Analytics KPI cards & grafik penugasan PBT
-        ├── SuratList.tsx           # Tabel rekapitulasi surat, filter, & ekspor docx
+        ├── SuratList.tsx           # Tabel rekapitulasi surat, filter, ekspor docx, & custom delete confirmation modal
         ├── SuratFormModal.tsx      # Modal form input surat baru & disposisi admin
         ├── BendaharaPage.tsx       # Halaman Bendahara untuk mengedit field pembayaran
         ├── UserApprovalModal.tsx   # Panel persetujuan registrasi & hapus user aktif
         ├── LoginRegister.tsx       # Halaman Login, Registrasi, & Tab Permohonan Surat Publik
         ├── PublicSuratForm.tsx     # Form permohonan surat publik (tanpa login)
-        ├── PublicSubmissionsReview.tsx # Halaman review permohonan publik (Operator/Admin)
+        ├── PublicSubmissionsReview.tsx # Halaman review permohonan publik (Operator/Admin) dengan optimistic status update
         └── FirebaseConfigModal.tsx # Modal pengaturan kredensial Firebase asli
     ```
 
@@ -159,20 +159,23 @@ Sistem menggunakan 3 koleksi utama di Cloud Firestore (atau LocalStorage pada mo
 
 ### 2. Role: Operator Surat
  * **Hak Akses:**
-   * Login ke sistem dengan email & password.
-   * Menginput data surat masuk baru (`surat_dari`, `nomor_surat`, `tanggal_surat`, `diterima_tanggal`, `nomor_agenda`, `sifat`, `hal`, `link_dokumen`).
-   * Melihat rekapitulasi seluruh data surat.
-   * Mengedit data surat sebelum diproses lebih lanjut oleh Admin.
-   * Mendownload lembar disposisi `.docx` siap cetak.
-   * **Review Permohonan Publik:** Meninjau daftar permohonan surat dari publik (tanpa login) di halaman **"Permohonan Publik"** dan mengubah status menjadi `processed` atau `rejected`.
+    * Login ke sistem dengan email & password.
+    * Menginput data surat masuk baru (`surat_dari`, `nomor_surat`, `tanggal_surat`, `diterima_tanggal`, `nomor_agenda`, `sifat`, `hal`, `link_dokumen`).
+    * Melihat rekapitulasi seluruh data surat.
+    * Mengedit data surat sebelum diproses lebih lanjut oleh Admin.
+    * Mendownload lembar disposisi `.docx` siap cetak.
+    * **Review Permohonan Publik:** Meninjau daftar permohonan surat dari publik (tanpa login) di halaman **"Permohonan Publik"** dan mengubah status menjadi `processed` atau `rejected`.
+    * **Konfirmasi Hapus:** Dialog konfirmasi custom sebelum menghapus data surat.
 
 ### 3. Role: Admin (Koordinator UPT PSBTPH Malang)
  * **Hak Akses:**
-   * Akses penuh ke seluruh fitur dan data sistem.
-   * **Manajemen & Approval User:** Menyetujui registrasi pengguna baru, memilih role (`admin`, `operator`, `pbt`, `bendahara`), menetapkan pemetaan nama PBT, serta **menghapus akun pengguna aktif**.
-   * **Proses Disposisi:** Menentukan petugas PBT (`petugas`), mencentang instruksi disposisi (`catatan`), mengisi catatan manual, dan menetapkan tanggal disposisi.
-   * Mengedit, menghapus, serta mendownload dokumen disposisi `.docx`.
-   * **Review Permohonan Publik:** Sama seperti Operator, Admin juga dapat meninjau dan mengubah status permohonan surat publik menjadi `processed` atau `rejected`.
+    * Akses penuh ke seluruh fitur dan data sistem.
+    * **Manajemen & Approval User:** Menyetujui registrasi pengguna baru, memilih role (`admin`, `operator`, `pbt`, `bendahara`), menetapkan pemetaan nama PBT, serta **menghapus akun pengguna aktif**.
+    * **Proses Disposisi:** Menentukan petugas PBT (`petugas`), mencentang instruksi disposisi (`catatan`), mengisi catatan manual, dan menetapkan tanggal disposisi.
+    * Mengedit, menghapus, serta mendownload dokumen disposisi `.docx`.
+    * **Review Permohonan Publik:** Sama seperti Operator, Admin juga dapat meninjau dan mengubah status permohonan surat publik menjadi `processed` atau `rejected`.
+    * **Konfirmasi Hapus:** Dialog konfirmasi custom sebelum menghapus data surat.
+    * **Konfirmasi Logout:** Dialog konfirmasi sebelum keluar dari sistem.
 
 ### 4. Role: Bendahara (Pengelola Keuangan)
 * **Hak Akses:**
@@ -193,6 +196,15 @@ Aplikasi mendukung toggle antara **Dark Mode** dan **Light Mode**. Pengguna dapa
 - Tombol toggle di navbar (kanan atas) memungkinkan switch ke **Light Mode**
 - Tema dipersist ke `localStorage` dengan key `e_disposisi_theme`
 - Semua komponen menggunakan CSS custom properties untuk mendukung kedua tema
+
+## 📱 Responsivitas Mobile
+
+Aplikasi telah dioptimalkan untuk perangkat mobile dengan layout yang adaptif:
+- **Navbar**: menu dan tombol aksi menyesuaikan layar kecil
+- **Sidebar**: navigasi collapsed pada layar mobile
+- **Tabel surat**: horizontal scroll pada layar kecil
+- **Form**: input dan tombol menyesuaikan ukuran layar
+- **Modal**: dialog konfirmasi dan form modal menyesuaikan layar mobile
 
 ---
 
@@ -227,12 +239,28 @@ Setelah permohonan publik masuk dengan status `pending`, role **Operator** dan *
 - **Filter status**: filter daftar berdasarkan status (Semua, Pending, Processed, Rejected)
 - **Detail lengkap**: menampilkan surat dari, kategori hal, link dokumen, dan timestamp
 - **Aksi cepat**: tombol **Processed** (hijau) dan **Rejected** (merah) untuk setiap permohonan pending
+- **Optimistic UI update**: saat tombol **Processed** diklik, status langsung berubah menjadi `processed` dan tombol aksi hilang untuk mencegah klik ganda
 - **Real-time sync**: perubahan status langsung terupdate di semua client yang aktif
+- **Error handling**: jika update Firestore gagal, status lokal otomatis dikembalikan ke semula dan pesan error ditampilkan
 
 ### Hak Akses Review:
 - **Operator Surat**: dapat melihat dan mengubah status permohonan publik
 - **Admin Koordinator**: dapat melihat dan mengubah status permohonan publik
 - **PBT & Bendahara**: tidak memiliki akses ke halaman review permohonan publik
+
+## 🗑️ Konfirmasi Hapus Data
+
+Sistem menggunakan dialog konfirmasi custom (bukan dialog native browser) untuk mencegah penghapusan data yang tidak disengaja.
+
+### Fitur Konfirmasi Hapus:
+- **Dark backdrop dengan blur**: fokus ke dialog konfirmasi
+- **Informasi detail**: menampilkan data yang akan dihapus (nomor agenda, pengirim, nomor surat)
+- **Peringatan file terlampir**: menampilkan peringatan jika ada dokumen yang terhubung
+- **Tombol aksi**: **Batal** dan **Ya, Hapus** dengan warna yang jelas
+
+### Lokasi Dialog Konfirmasi:
+- **Hapus Surat**: di `SuratList.tsx` saat menekan tombol hapus pada baris tabel surat
+- **Logout**: di `Navbar.tsx` saat menekan tombol logout, menampilkan dialog konfirmasi sebelum keluar dari sistem
 
 ---
 

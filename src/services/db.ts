@@ -7,7 +7,7 @@ import {
   updateDoc,
   deleteDoc,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 const SURAT_COLLECTION = 'disposisi_surat';
 const USERS_COLLECTION = 'users';
@@ -155,8 +155,10 @@ export const updatePublicSubmissionInFirestore = async (
 ) => {
   if (firebaseDb) {
     try {
-      await updateDoc(doc(firebaseDb, PUBLIC_SUBMISSIONS_COLLECTION, id), data);
+      // Use setDoc with merge:true so it can handle documents that don't exist yet
+      await setDoc(doc(firebaseDb, PUBLIC_SUBMISSIONS_COLLECTION, id), data, { merge: true });
     } catch (err) {
+      // Don't throw - just log the error and continue saving to localStorage
       console.error('Error updating public submission in Firestore:', err);
     }
   }
@@ -165,6 +167,50 @@ export const updatePublicSubmissionInFirestore = async (
   saveLocalPublicSubmissions(
     local.map((item) => (item.id === id ? { ...item, ...data } : item))
   );
+};
+
+/**
+ * Detects if a URL is a Firebase Storage URL (contains firebasestorage.googleapis.com)
+ */
+const isFirebaseStorageUrl = (url: string): boolean => {
+  return url.includes('firebasestorage.googleapis.com');
+};
+
+/**
+ * Deletes a public submission from Firestore, optionally deletes the attached file
+ * from Firebase Storage if it was uploaded there, and removes from localStorage.
+ */
+export const deletePublicSubmission = async (id: string, linkDokumen?: string): Promise<void> => {
+  // 1. Delete file from Firebase Storage if it's a Storage URL
+  if (linkDokumen && isFirebaseStorageUrl(linkDokumen) && firebaseStorage) {
+    try {
+      // Extract storage path from the download URL
+      const url = new URL(linkDokumen);
+      // The path is encoded in the 'o' query param for Firebase Storage
+      const pathParam = url.searchParams.get('o');
+      if (pathParam) {
+        const storagePath = decodeURIComponent(pathParam);
+        const fileRef = ref(firebaseStorage, storagePath);
+        await deleteObject(fileRef);
+      }
+    } catch (err) {
+      // Don't block deletion if file removal fails (e.g. already deleted)
+      console.warn('Could not delete file from Firebase Storage:', err);
+    }
+  }
+
+  // 2. Delete document from Firestore
+  if (firebaseDb) {
+    try {
+      await deleteDoc(doc(firebaseDb, PUBLIC_SUBMISSIONS_COLLECTION, id));
+    } catch (err) {
+      console.error('Error deleting public submission from Firestore:', err);
+    }
+  }
+
+  // 3. Always remove from localStorage
+  const local = getLocalPublicSubmissions();
+  saveLocalPublicSubmissions(local.filter((item) => item.id !== id));
 };
 
 // --- Database Export / Backup & Restore ---
