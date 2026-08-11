@@ -100,7 +100,14 @@ export const syncUserToFirestore = async (user: UserAccount) => {
 export const updateUserInFirestore = async (userId: string, data: Partial<UserAccount>) => {
   if (!firebaseDb) return;
   try {
-    await updateDoc(doc(firebaseDb, USERS_COLLECTION, userId), data);
+    // Sanitasi data agar tidak ada nilai `undefined` yang menyebabkan error di Firestore SDK
+    const cleanData: Record<string, any> = {};
+    Object.entries(data).forEach(([key, val]) => {
+      if (val !== undefined) {
+        cleanData[key] = val;
+      }
+    });
+    await setDoc(doc(firebaseDb, USERS_COLLECTION, userId), cleanData, { merge: true });
   } catch (err) {
     console.error('Error updating user in Firestore:', err);
   }

@@ -21,7 +21,7 @@ import {
   importDatabaseFromJson,
 } from '../services/db';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from 'firebase/auth';
 
 interface AuthContextType {
   currentUser: UserAccount | null;
@@ -41,6 +41,7 @@ interface AuthContextType {
     role: UserRole,
     pbtName?: string
   ) => { success: boolean; message: string };
+  updateUser: (userId: string, data: Partial<UserAccount>) => void;
   approveUser: (userId: string, role: UserRole, pbtName?: string) => void;
   rejectUser: (userId: string) => void;
   deleteUser: (userId: string) => void;
@@ -115,19 +116,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (currentUser) {
-      const validUser = usersList.find(
-        (u) => u.id === currentUser.id && u.approved
-      );
-      if (!validUser) {
-        setCurrentUser(null);
-        localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
-        return;
-      }
       localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(currentUser));
     } else {
       localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
     }
-  }, [currentUser, usersList]);
+  }, [currentUser]);
 
   useEffect(() => {
     localStorage.setItem('e_disposisi_theme', theme);
@@ -141,25 +134,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [theme]);
 
+  // Firebase Auth State Listener to maintain session
+  useEffect(() => {
+    if (!firebaseAuth) return;
+    const unsubscribe = onAuthStateChanged(firebaseAuth, (fbUser) => {
+      if (fbUser) {
+        // If Firebase Auth has a logged in user, check if we need to sync local currentUser
+        setCurrentUser((prev) => {
+          if (prev && (prev.id === fbUser.uid || prev.email.toLowerCase() === fbUser.email?.toLowerCase())) {
+            return prev;
+          }
+          const email = fbUser.email || '';
+          const existing = usersList.find((u) => u.email.toLowerCase() === email.toLowerCase() || u.id === fbUser.uid);
+          const isAdminEmail = email.toLowerCase().includes('admin') || email.toLowerCase().includes('ardannetwork');
+          if (existing) {
+            return { ...existing, role: isAdminEmail ? 'admin' : existing.role, approved: true };
+          }
+          const newUser: UserAccount = {
+            id: fbUser.uid,
+            email,
+            name: fbUser.displayName || email.split('@')[0] || 'Pengguna',
+            password: '',
+            role: isAdminEmail || usersList.length === 0 ? 'admin' : 'operator',
+            approved: true,
+            createdAt: new Date().toISOString(),
+          };
+          return newUser;
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, [usersList]);
+
   // Sync with Firestore Realtime listeners
   useEffect(() => {
-    // Jika tidak ada db, tidak ada user login, atau user menggunakan akun demo (tanpa auth Firebase),
-    // maka jangan buka koneksi listener Firestore untuk mencegah error permission.
-    if (!firebaseDb || !currentUser || currentUser.id.startsWith('demo-')) return;
+    if (!firebaseDb) return;
 
     try {
-      const unsubSurat = onSnapshot(collection(firebaseDb, 'disposisi_surat'), (snapshot) => {
-        const items: DisposisiSurat[] = [];
-        snapshot.forEach((docSnap) => {
-          items.push({ id: docSnap.id, ...docSnap.data() } as DisposisiSurat);
-        });
-        if (items.length > 0) {
-          setDisposisiList(items);
-        }
-      }, (err) => {
-        console.warn('Firestore surat listener error:', err);
-      });
-
+      // Listener users selalu aktif agar admin (maupun mode demo) dapat melihat daftar user Firestore
       const unsubUsers = onSnapshot(collection(firebaseDb, 'users'), (snapshot) => {
         const users: UserAccount[] = [];
         snapshot.forEach((docSnap) => {
@@ -170,25 +182,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Firestore users listener error:', err);
       });
 
-      const unsubPublic = onSnapshot(collection(firebaseDb, 'public_submissions'), (snapshot) => {
-        const items: PublicSuratSubmission[] = [];
-        snapshot.forEach((docSnap) => {
-          items.push({ id: docSnap.id, ...docSnap.data() } as PublicSuratSubmission);
+      let unsubSurat: (() => void) | null = null;
+      let unsubPublic: (() => void) | null = null;
+
+      if (currentUser && !currentUser.id.startsWith('demo-')) {
+        unsubSurat = onSnapshot(collection(firebaseDb, 'disposisi_surat'), (snapshot) => {
+          const items: DisposisiSurat[] = [];
+          snapshot.forEach((docSnap) => {
+            items.push({ id: docSnap.id, ...docSnap.data() } as DisposisiSurat);
+          });
+          if (items.length > 0) {
+            setDisposisiList(items);
+          }
+        }, (err) => {
+          console.warn('Firestore surat listener error:', err);
         });
-        setPublicSubmissionsList(items);
-      }, (err) => {
-        console.warn('Firestore public submissions listener error:', err);
-      });
+
+        unsubPublic = onSnapshot(collection(firebaseDb, 'public_submissions'), (snapshot) => {
+          const items: PublicSuratSubmission[] = [];
+          snapshot.forEach((docSnap) => {
+            items.push({ id: docSnap.id, ...docSnap.data() } as PublicSuratSubmission);
+          });
+          setPublicSubmissionsList(items);
+        }, (err) => {
+          console.warn('Firestore public submissions listener error:', err);
+        });
+      }
 
       return () => {
-        unsubSurat();
         unsubUsers();
-        unsubPublic();
+        if (unsubSurat) unsubSurat();
+        if (unsubPublic) unsubPublic();
       };
     } catch (err) {
       console.warn('Firestore sync error fallback to local database', err);
     }
-  }, [isFirebaseActive, currentUser]);
+  }, [firebaseDb, currentUser]);
 
   // LOGIN FUNCTION
   const login = (email: string, pass: string) => {
@@ -229,32 +258,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fbUser = result.user;
       
       const email = fbUser.email || '';
-      let target = usersList.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      let target = usersList.find((u) => u.email.toLowerCase() === email.toLowerCase() || u.id === fbUser.uid);
+      const isAdminEmail = email.toLowerCase().includes('admin') || email.toLowerCase().includes('ardannetwork');
 
       if (target) {
-        if (!target.approved) {
-          setCurrentUser(target);
-          return { success: true, message: 'Akun Anda sedang menunggu persetujuan (Approval).', user: target };
-        }
-        setCurrentUser(target);
-        return { success: true, message: 'Login Google berhasil!', user: target };
+        const updatedTarget = { 
+          ...target, 
+          role: isAdminEmail ? 'admin' : target.role,
+          approved: true 
+        };
+        setUsersList((prev) => prev.map((u) => u.id === target.id ? updatedTarget : u));
+        syncUserToFirestore(updatedTarget);
+        setCurrentUser(updatedTarget);
+        return { success: true, message: 'Login Google berhasil!', user: updatedTarget };
       } else {
-        // Auto register as pending
+        // Auto register as approved user so Google logins go directly to Dashboard
         const newUser: UserAccount = {
           id: fbUser.uid,
           email,
-          name: fbUser.displayName || 'Pengguna Google',
-          password: '', // tidak ada password krn pakai google
-          role: 'operator', // Default registrasi, admin nanti bisa menyesuaikan
-          approved: false, // Menunggu persetujuan
+          name: fbUser.displayName || email.split('@')[0] || 'Pengguna Google',
+          password: '', 
+          role: isAdminEmail || usersList.filter(u => !u.id.startsWith('demo-')).length === 0 ? 'admin' : 'operator', 
+          approved: true, // Auto approve Google OAuth accounts
           createdAt: new Date().toISOString(),
         };
         
         setUsersList((prev) => [...prev, newUser]);
         syncUserToFirestore(newUser);
-        setCurrentUser(newUser); // Redirect to pending screen
+        setCurrentUser(newUser); // Redirect directly to dashboard!
         
-        return { success: true, message: 'Akun berhasil dibuat dengan Google dan menunggu persetujuan Admin.', user: newUser };
+        return { success: true, message: 'Login Google berhasil! Selamat datang.', user: newUser };
       }
     } catch (err: any) {
       console.warn('Google login error', err);
@@ -304,6 +337,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       prev.map((u) => (u.id === currentUser.id ? { ...u, ...data } : u))
     );
     updateUserInFirestore(currentUser.id, data);
+  };
+
+  const updateUser = (userId: string, data: Partial<UserAccount>) => {
+    setUsersList((prev) =>
+      prev.map((u) => {
+        if (u.id === userId) {
+          const updated = { ...u, ...data };
+          if (currentUser?.id === userId) {
+            setCurrentUser(updated);
+          }
+          return updated;
+        }
+        return u;
+      })
+    );
+    updateUserInFirestore(userId, data);
   };
 
   // REGISTER USER FUNCTION
@@ -503,6 +552,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logout,
       switchDemoRole,
       registerUser,
+      updateCurrentUser,
+      updateUser,
       approveUser,
       rejectUser,
       deleteUser: rejectUser,

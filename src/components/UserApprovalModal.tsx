@@ -1,13 +1,22 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { UserRole, PETUGAS_PBT_LIST } from '../types/disposisi';
-import { UserCheck, ShieldAlert, Check, X, UserPlus, Shield, Trash2 } from 'lucide-react';
+import { UserCheck, ShieldAlert, Check, X, UserPlus, Shield, Trash2, Pencil } from 'lucide-react';
 
 export const UserApprovalModal: React.FC = () => {
-  const { usersList, approveUser, rejectUser, deleteUser, registerUser, currentUser } = useAuth();
+  const { usersList, approveUser, rejectUser, deleteUser, registerUser, updateUser, currentUser, isFirebaseActive } = useAuth();
 
-  const pendingUsers = usersList.filter((u) => !u.approved);
-  const activeUsers = usersList.filter((u) => u.approved);
+  // Filter pengguna: Jika terhubung ke Firebase, saring akun demo mock agar hanya menampilkan user riil dari Firestore
+  const displayUsers = isFirebaseActive
+    ? usersList.filter(
+        (u) =>
+          !['user-admin-1', 'user-operator-1', 'user-pbt-1', 'user-pbt-2', 'user-pending-1', 'user-bendahara-1'].includes(u.id) &&
+          !u.id.startsWith('demo-')
+      )
+    : usersList;
+
+  const pendingUsers = displayUsers.filter((u) => !u.approved);
+  const activeUsers = displayUsers.filter((u) => u.approved);
 
   // Quick Register Modal Form state (to simulate new user signing up)
   const [showRegisterForm, setShowRegisterForm] = useState(false);
@@ -19,6 +28,42 @@ export const UserApprovalModal: React.FC = () => {
   // Selected state per pending user item
   const [userRoleMap, setUserRoleMap] = useState<Record<string, UserRole>>({});
   const [userPbtMap, setUserPbtMap] = useState<Record<string, string>>({});
+
+  // Edit User Modal State
+  const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editRole, setEditRole] = useState<UserRole>('operator');
+  const [editPbtName, setEditPbtName] = useState<string>(PETUGAS_PBT_LIST[0]);
+  const [editApproved, setEditApproved] = useState(true);
+
+  const handleOpenEditModal = (user: UserAccount) => {
+    setEditingUser(user);
+    setEditName(user.name);
+    setEditEmail(user.email);
+    setEditRole(user.role);
+    setEditPbtName(user.pbt_name || PETUGAS_PBT_LIST[0]);
+    setEditApproved(user.approved);
+  };
+
+  const handleSaveEditUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    const payload: Partial<UserAccount> = {
+      name: editName,
+      email: editEmail,
+      role: editRole,
+      approved: editApproved,
+    };
+
+    if (editRole === 'pbt') {
+      payload.pbt_name = editPbtName;
+    }
+
+    updateUser(editingUser.id, payload);
+    setEditingUser(null);
+  };
 
   const handleApprove = (userId: string) => {
     const role = userRoleMap[userId] || 'pbt';
@@ -291,14 +336,24 @@ export const UserApprovalModal: React.FC = () => {
                     </span>
                   </td>
                   <td className="py-3 px-4 text-center">
-                    <button
-                      onClick={() => handleDeleteActiveUser(u.id, u.name)}
-                      className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors inline-flex items-center gap-1"
-                      title="Hapus Akun Pengguna Ini"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span className="text-[11px] font-semibold">Hapus</span>
-                    </button>
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => handleOpenEditModal(u)}
+                        className="p-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 transition-colors inline-flex items-center gap-1"
+                        title="Edit Data & Role Pengguna Ini"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span className="text-[11px] font-semibold">Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteActiveUser(u.id, u.name)}
+                        className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors inline-flex items-center gap-1"
+                        title="Hapus Akun Pengguna Ini"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span className="text-[11px] font-semibold">Hapus</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -306,6 +361,115 @@ export const UserApprovalModal: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* EDIT USER MODAL */}
+      {editingUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            onClick={() => setEditingUser(null)}
+          />
+          <div className="relative w-full max-w-md bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-teal-400" />
+                <span>Edit Data & Role Pengguna</span>
+              </h3>
+              <button
+                onClick={() => setEditingUser(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditUser} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Nama Lengkap</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-100 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Email Pengguna</label>
+                <input
+                  type="email"
+                  required
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-100 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Role / Hak Akses</label>
+                  <select
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value as UserRole)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-100 focus:outline-none focus:border-teal-500"
+                  >
+                    <option value="admin">Admin Koordinator</option>
+                    <option value="operator">Operator Surat</option>
+                    <option value="pbt">PBT (Pengawas Benih)</option>
+                    <option value="bendahara">Bendahara UPT</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Status Persetujuan</label>
+                  <select
+                    value={editApproved ? 'approved' : 'pending'}
+                    onChange={(e) => setEditApproved(e.target.value === 'approved')}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-100 focus:outline-none focus:border-teal-500 font-semibold"
+                  >
+                    <option value="approved">Disetujui (Aktif)</option>
+                    <option value="pending">Pending Approval</option>
+                  </select>
+                </div>
+              </div>
+
+              {editRole === 'pbt' && (
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Pemetaan Nama Petugas PBT</label>
+                  <select
+                    value={editPbtName}
+                    onChange={(e) => setEditPbtName(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-amber-300 font-semibold focus:outline-none focus:border-amber-500"
+                  >
+                    {PETUGAS_PBT_LIST.map((pbt) => (
+                      <option key={pbt} value={pbt}>
+                        {pbt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 font-semibold hover:bg-slate-800 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold shadow-lg shadow-teal-600/20 transition-all"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
