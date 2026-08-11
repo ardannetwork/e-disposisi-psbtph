@@ -8,6 +8,7 @@ import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 type ReviewStatus = 'all' | 'pending' | 'processed' | 'rejected';
 
 const LOCAL_OVERRIDES_KEY = 'e_disposisi_pub_status_overrides';
+const LOCAL_DELETED_KEY = 'e_disposisi_pub_deleted_ids';
 
 const loadPersistedOverrides = (): Record<string, 'processed' | 'rejected'> => {
   try {
@@ -26,6 +27,23 @@ const savePersistedOverrides = (overrides: Record<string, 'processed' | 'rejecte
   }
 };
 
+const loadPersistedDeletedIds = (): string[] => {
+  try {
+    const saved = localStorage.getItem(LOCAL_DELETED_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
+const savePersistedDeletedIds = (ids: string[]) => {
+  try {
+    localStorage.setItem(LOCAL_DELETED_KEY, JSON.stringify(ids));
+  } catch {
+    // ignore
+  }
+};
+
 export const PublicSubmissionsReview: React.FC = () => {
   const { publicSubmissionsList, updatePublicSubmissionStatus, processPublicSubmission, deletePublicSubmission, currentUser } = useAuth();
   const [filter, setFilter] = useState<ReviewStatus>('all');
@@ -36,6 +54,11 @@ export const PublicSubmissionsReview: React.FC = () => {
   // Bug Fix 1: Persist localStatusOverrides to localStorage so it survives component remount
   const [localStatusOverrides, setLocalStatusOverrides] = useState<Record<string, 'processed' | 'rejected'>>(
     () => loadPersistedOverrides()
+  );
+
+  // Bug Fix 3: Persist deleted IDs to hide them even if Firestore listener reverts due to permission error
+  const [localDeletedIds, setLocalDeletedIds] = useState<string[]>(
+    () => loadPersistedDeletedIds()
   );
 
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
@@ -52,6 +75,11 @@ export const PublicSubmissionsReview: React.FC = () => {
   useEffect(() => {
     savePersistedOverrides(localStatusOverrides);
   }, [localStatusOverrides]);
+
+  // Sync localDeletedIds to localStorage whenever they change
+  useEffect(() => {
+    savePersistedDeletedIds(localDeletedIds);
+  }, [localDeletedIds]);
 
   // Clean up overrides for items that are deleted from Firestore/context
   useEffect(() => {
@@ -73,7 +101,8 @@ export const PublicSubmissionsReview: React.FC = () => {
   }, [firestoreItems, publicSubmissionsList]);
 
   useEffect(() => {
-    if (!firebaseDb || !currentUser) return;
+    // Hindari listener jika menggunakan akun demo agar tidak muncul permission error di console
+    if (!firebaseDb || !currentUser || currentUser.id.startsWith('demo-')) return;
 
     setListenerError(null);
     const q = query(collection(firebaseDb, 'public_submissions'), orderBy('created_at', 'desc'));
@@ -97,7 +126,10 @@ export const PublicSubmissionsReview: React.FC = () => {
   }, [firebaseDb, currentUser]);
 
   const merged = firestoreItems.length > 0 ? firestoreItems : publicSubmissionsList;
-  const mergedWithOverrides: PublicSuratSubmission[] = merged.map((s) => ({
+  // Filter out locally deleted IDs to prevent them from showing up again when Firestore write fails
+  const visibleMerged = merged.filter((s) => !localDeletedIds.includes(s.id));
+
+  const mergedWithOverrides: PublicSuratSubmission[] = visibleMerged.map((s) => ({
     ...s,
     status: localStatusOverrides[s.id] || s.status,
   }));
@@ -144,6 +176,8 @@ export const PublicSubmissionsReview: React.FC = () => {
     setIsDeleting(true);
     setLocalStatusOverrides((prev) => ({ ...prev, [id]: 'rejected' }));
     try {
+      // Optimistically hide it
+      setLocalDeletedIds((prev) => [...prev, id]);
       await deletePublicSubmission(id, link_dokumen);
       // Clean override after successful deletion
       setLocalStatusOverrides((prev) => {
@@ -367,30 +401,34 @@ export const PublicSubmissionsReview: React.FC = () => {
                       )}
                     </div>
 
-                    {/* ACTION BUTTONS — hanya tampil jika status pending */}
-                    {isPending && canReview && (
-                      <div className="flex items-center gap-2 shrink-0">
-                        {/* PROCESSED BUTTON */}
-                        <button
-                          onClick={() => handleProcessed(submission)}
-                          disabled={processingId === submission.id}
-                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          {processingId === submission.id ? 'Memproses...' : 'Processed'}
-                        </button>
+                    {/* ACTION AREA */}
+                    <div className="shrink-0">
+                      {canReview && (
+                        <div className="flex items-center gap-2">
+                          {/* PROCESSED BUTTON - Hanya tampil jika pending */}
+                          {isPending && (
+                            <button
+                              onClick={() => handleProcessed(submission)}
+                              disabled={processingId === submission.id}
+                              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                              {processingId === submission.id ? 'Memproses...' : 'Processed'}
+                            </button>
+                          )}
 
-                        {/* REJECTED BUTTON — menghapus data setelah konfirmasi */}
-                        <button
-                          onClick={() => handleRejectClick(submission)}
-                          disabled={processingId === submission.id}
-                          className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Rejected
-                        </button>
-                      </div>
-                    )}
+                          {/* REJECTED BUTTON - Tampil di pending maupun processed */}
+                          <button
+                            onClick={() => handleRejectClick(submission)}
+                            disabled={processingId === submission.id}
+                            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            Rejected
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -399,7 +437,7 @@ export const PublicSubmissionsReview: React.FC = () => {
         )}
       </div>
 
-      {/* REJECT CONFIRMATION MODAL */}
+      {/* REJECT (PENDING) CONFIRMATION MODAL */}
       {deleteTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div
@@ -426,7 +464,7 @@ export const PublicSubmissionsReview: React.FC = () => {
                 </p>
                 {deleteTarget.link_dokumen && (
                   <p className="text-xs text-amber-300 font-semibold mt-1">
-                    ⚠ File dokumen yang terupload juga akan dihapus.
+                    ⚠ File dokumen yang terupload juga akan dihapus dari Storage.
                   </p>
                 )}
               </div>
@@ -453,3 +491,4 @@ export const PublicSubmissionsReview: React.FC = () => {
     </div>
   );
 };
+

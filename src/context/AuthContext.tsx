@@ -21,7 +21,7 @@ import {
   importDatabaseFromJson,
 } from '../services/db';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 interface AuthContextType {
   currentUser: UserAccount | null;
@@ -31,6 +31,7 @@ interface AuthContextType {
   theme: string;
   toggleTheme: () => void;
   login: (email: string, pass: string) => { success: boolean; message: string; user?: UserAccount };
+  loginWithGoogle: () => Promise<{ success: boolean; message: string; user?: UserAccount }>;
   logout: () => void;
   switchDemoRole: (role: UserRole, pbtName?: string) => void;
   registerUser: (
@@ -142,7 +143,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sync with Firestore Realtime listeners
   useEffect(() => {
-    if (!firebaseDb || !currentUser) return;
+    // Jika tidak ada db, tidak ada user login, atau user menggunakan akun demo (tanpa auth Firebase),
+    // maka jangan buka koneksi listener Firestore untuk mencegah error permission.
+    if (!firebaseDb || !currentUser || currentUser.id.startsWith('demo-')) return;
+
     try {
       const unsubSurat = onSnapshot(collection(firebaseDb, 'disposisi_surat'), (snapshot) => {
         const items: DisposisiSurat[] = [];
@@ -213,6 +217,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setCurrentUser(foundUser);
     return { success: true, message: 'Login berhasil! Selamat datang.', user: foundUser };
+  };
+
+  // LOGIN WITH GOOGLE FUNCTION
+  const loginWithGoogle = async (): Promise<{ success: boolean; message: string; user?: UserAccount }> => {
+    if (!firebaseAuth) return { success: false, message: 'Koneksi Firebase belum diinisialisasi.' };
+    
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(firebaseAuth, provider);
+      const fbUser = result.user;
+      
+      const email = fbUser.email || '';
+      let target = usersList.find((u) => u.email.toLowerCase() === email.toLowerCase());
+
+      if (target) {
+        if (!target.approved) {
+          setCurrentUser(target);
+          return { success: true, message: 'Akun Anda sedang menunggu persetujuan (Approval).', user: target };
+        }
+        setCurrentUser(target);
+        return { success: true, message: 'Login Google berhasil!', user: target };
+      } else {
+        // Auto register as pending
+        const newUser: UserAccount = {
+          id: fbUser.uid,
+          email,
+          name: fbUser.displayName || 'Pengguna Google',
+          password: '', // tidak ada password krn pakai google
+          role: 'operator', // Default registrasi, admin nanti bisa menyesuaikan
+          approved: false, // Menunggu persetujuan
+          createdAt: new Date().toISOString(),
+        };
+        
+        setUsersList((prev) => [...prev, newUser]);
+        syncUserToFirestore(newUser);
+        setCurrentUser(newUser); // Redirect to pending screen
+        
+        return { success: true, message: 'Akun berhasil dibuat dengan Google dan menunggu persetujuan Admin.', user: newUser };
+      }
+    } catch (err: any) {
+      console.warn('Google login error', err);
+      return { success: false, message: err.message || 'Gagal masuk dengan Akun Google.' };
+    }
   };
 
   // LOGOUT FUNCTION
@@ -452,6 +499,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       theme,
       toggleTheme,
       login,
+      loginWithGoogle,
       logout,
       switchDemoRole,
       registerUser,
