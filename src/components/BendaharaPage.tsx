@@ -15,7 +15,7 @@ export const BendaharaPage: React.FC = () => {
     (item) =>
       item.nomor_agenda.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.surat_dari.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.petugas.toLowerCase().includes(searchQuery.toLowerCase())
+      item.pic.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleEditClick = (item: DisposisiSurat) => {
@@ -49,7 +49,7 @@ export const BendaharaPage: React.FC = () => {
           <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Cari berdasarkan nomor agenda, surat dari, atau petugas..."
+            placeholder="Cari berdasarkan nomor agenda, surat dari, atau pic..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
@@ -85,7 +85,7 @@ export const BendaharaPage: React.FC = () => {
                 <tr key={item.id} className="border-b border-slate-800/60 hover:bg-slate-800/40 transition-colors">
                   <td className="py-2.5 px-3 font-mono text-emerald-400">{item.nomor_agenda}</td>
                   <td className="py-2.5 px-3 text-slate-200 max-w-[200px] truncate">{item.surat_dari}</td>
-                  <td className="py-2.5 px-3 text-slate-300 max-w-[180px] truncate">{item.petugas}</td>
+                  <td className="py-2.5 px-3 text-slate-300 max-w-[180px] truncate">{item.pic}</td>
                   <td className="py-2.5 px-3">
                     <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                       item.status

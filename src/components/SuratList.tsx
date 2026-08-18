@@ -51,7 +51,7 @@ export const SuratList: React.FC<SuratListProps> = ({
   // Filtered List
   const filteredDisposisi = disposisiList.filter((item) => {
     // Role filter for PBT
-    if (isPbt && currentUser?.pbt_name && item.petugas !== currentUser.pbt_name) {
+    if (isPbt && currentUser?.pbt_name && item.pic !== currentUser.pbt_name) {
       return false;
     }
 
@@ -61,7 +61,7 @@ export const SuratList: React.FC<SuratListProps> = ({
       item.nomor_surat.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.nomor_agenda.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.hal.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.petugas.toLowerCase().includes(searchTerm.toLowerCase());
+      item.pic.toLowerCase().includes(searchTerm.toLowerCase());
 
     if (!matchSearch) return false;
 
@@ -73,7 +73,7 @@ export const SuratList: React.FC<SuratListProps> = ({
     if (filterStatus === 'belum' && item.status) return false;
 
     // Filter PBT
-    if (filterPbt !== 'all' && item.petugas !== filterPbt) return false;
+    if (filterPbt !== 'all' && item.pic !== filterPbt) return false;
 
     return true;
   });
@@ -196,6 +196,7 @@ export const SuratList: React.FC<SuratListProps> = ({
                 <th className="py-3.5 px-4">Tanggal Surat</th>
                 <th className="py-3.5 px-4">Perihal (Hal)</th>
                 <th className="py-3.5 px-4">Petugas PBT</th>
+                <th className="py-3.5 px-4">Kabupaten</th>
                 <th className="py-3.5 px-4">Instruksi Disposisi</th>
                 <th className="py-3.5 px-4 text-center">Dokumen PDF</th>
                 <th className="py-3.5 px-4 text-center">Aksi / Mail Merge</th>
@@ -204,13 +205,13 @@ export const SuratList: React.FC<SuratListProps> = ({
             <tbody className="divide-y divide-slate-800 text-xs text-slate-200">
               {filteredDisposisi.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-500">
+                  <td colSpan={10} className="py-12 text-center text-slate-500">
                     Tidak ada data disposisi surat yang sesuai dengan filter.
                   </td>
                 </tr>
               ) : (
                 filteredDisposisi.map((item) => {
-                  const isAssignedToCurrentPbt = isPbt && item.petugas === currentUser?.pbt_name;
+                  const isAssignedToCurrentPbt = isPbt && item.pic === currentUser?.pbt_name;
 
                   return (
                     <tr
@@ -306,14 +307,19 @@ export const SuratList: React.FC<SuratListProps> = ({
 
                       {/* PETUGAS PBT */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        {item.petugas ? (
+                        {item.pic ? (
                           <div className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-xl border border-slate-700 text-amber-300 font-semibold text-xs">
                             <UserCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                            <span className="truncate max-w-[140px]">{item.petugas}</span>
+                            <span className="truncate max-w-[140px]">{item.pic}</span>
                           </div>
                         ) : (
                           <span className="text-[11px] italic text-rose-400">Belum Ditentukan</span>
                         )}
+                      </td>
+
+                      {/* KABUPATEN */}
+                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-300">
+                        {item.kabupaten || '-'}
                       </td>
 
                       {/* INSTRUKSI / CATATAN */}

@@ -42,7 +42,9 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
   const [sifat, setSifat] = useState<string>('Penting');
   const [halType, setHalType] = useState<HalType>('Sertifikasi');
   const [hal, setHal] = useState<string>(HAL_SERTIFIKASI[0]);
+  const [pic, setPic] = useState<string>(PETUGAS_PBT_LIST[0]);
   const [petugas, setPetugas] = useState<string>(PETUGAS_PBT_LIST[0]);
+  const [kabupaten, setKabupaten] = useState<string>('');
   const [catatanSelected, setCatatanSelected] = useState<string[]>([
     'TL sesuai peraturan yang berlaku',
   ]);
@@ -91,6 +93,8 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
       setHalType(initialData.hal_type || 'Sertifikasi');
       setHal(initialData.hal || HAL_SERTIFIKASI[0]);
       setPetugas(initialData.petugas || PETUGAS_PBT_LIST[0]);
+      setPic(initialData.pic || PETUGAS_PBT_LIST[0]);
+      setKabupaten(initialData.kabupaten || '');
       setCatatanSelected(initialData.catatan || []);
       setCatatanLain(initialData.catatan_lain || '');
       setLinkDokumen(initialData.link_dokumen || '');
@@ -114,6 +118,8 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
       setHalType('Sertifikasi');
       setHal(HAL_SERTIFIKASI[0]);
       setPetugas(PETUGAS_PBT_LIST[0]);
+      setPic(PETUGAS_PBT_LIST[0]);
+      setKabupaten('');
       setCatatanSelected(['TL sesuai peraturan yang berlaku']);
       setCatatanLain('');
       setLinkDokumen('');
@@ -303,6 +309,8 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
       hal,
       hal_type: halType,
       petugas: isAdmin || mode === 'disposisi' ? petugas : initialData?.petugas || '',
+      pic: isAdmin || mode === 'disposisi' ? pic : initialData?.pic || '',
+      kabupaten: kabupaten,
       catatan: catatanSelected,
       catatan_lain: catatanSelected.includes('Lain-lain') ? catatanLain : '',
       link_dokumen: linkDokumen,
@@ -389,6 +397,20 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
                   placeholder="Contoh: 012/KTMS/VIII/2026"
                   value={nomorSurat}
                   onChange={(e) => setNomorSurat(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Kabupaten <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Malang"
+                  value={kabupaten}
+                  onChange={(e) => setKabupaten(e.target.value)}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                 />
               </div>
@@ -677,6 +699,23 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    PIC <span className="text-rose-400">*</span>
+                  </label>
+                  <select
+                    value={pic}
+                    onChange={(e) => setPic(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-amber-300 font-semibold focus:outline-none focus:border-amber-500"
+                  >
+                    {PETUGAS_PBT_LIST.map((pbt) => (
+                      <option key={pbt} value={pbt}>
+                        {pbt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Petugas PBT Ditugaskan <span className="text-rose-400">*</span>
                   </label>
                   <select
@@ -691,18 +730,18 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
                     ))}
                   </select>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Tanggal Disposisi Admin
-                  </label>
-                  <input
-                    type="date"
-                    value={tanggalDisposisi}
-                    onChange={(e) => setTanggalDisposisi(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Tanggal Disposisi Admin
+                </label>
+                <input
+                  type="date"
+                  value={tanggalDisposisi}
+                  onChange={(e) => setTanggalDisposisi(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                />
               </div>
 
               {/* CHECKBOX CATATAN */}

@@ -74,10 +74,10 @@ const createDocxXmlTemplate = () => {
       <w:tr>
         <w:tc>
           <w:tcPr><w:tcW w:w="2500" w:type="pct"/></w:tcPr>
-          <w:p><w:pPr><w:spacing w:before="10" w:after="10"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>1. {petugas_1}</w:t></w:r></w:p>
-          <w:p><w:pPr><w:spacing w:before="10" w:after="10"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>2. {petugas_2}</w:t></w:r></w:p>
-          <w:p><w:pPr><w:spacing w:before="10" w:after="10"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>3. {petugas_3}</w:t></w:r></w:p>
-          <w:p><w:pPr><w:spacing w:before="10" w:after="10"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>4. {petugas_4}</w:t></w:r></w:p>
+          <w:p><w:pPr><w:spacing w:before="10" w:after="10"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>1. {pic_1}</w:t></w:r></w:p>
+          <w:p><w:pPr><w:spacing w:before="10" w:after="10"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>2. {pic_2}</w:t></w:r></w:p>
+          <w:p><w:pPr><w:spacing w:before="10" w:after="10"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>3. {pic_3}</w:t></w:r></w:p>
+          <w:p><w:pPr><w:spacing w:before="10" w:after="10"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t>4. {pic_4}</w:t></w:r></w:p>
         </w:tc>
         <w:tc>
           <w:tcPr><w:tcW w:w="2500" w:type="pct"/></w:tcPr>
@@ -171,7 +171,7 @@ export const exportDisposisiToDocx = (disposisi: DisposisiSurat) => {
       linebreaks: true,
     });
 
-    const p1 = disposisi.petugas || '…………………………………………….';
+    const p1 = disposisi.pic || '…………………………………………….';
     const p2 = '…………………………………………….';
     const p3 = '…………………………………………….';
     const p4 = '…………………………………………….';
@@ -219,10 +219,10 @@ export const exportDisposisiToDocx = (disposisi: DisposisiSurat) => {
       nomor_agenda: disposisi.nomor_agenda || dots(30),
       sifat: disposisi.sifat || dots(30),
       hal: disposisi.hal || dots(30),
-      petugas_1: p1,
-      petugas_2: p2,
-      petugas_3: p3,
-      petugas_4: p4,
+      pic_1: p1,
+      pic_2: p2,
+      pic_3: p3,
+      pic_4: p4,
       chk_tanggapan: chkTanggapan,
       chk_periksa: chkPeriksa,
       chk_koordinasi: chkKoordinasi,
@@ -271,7 +271,7 @@ export const exportDisposisiToPdf = (disposisi: DisposisiSurat) => {
   pdf.setFont("helvetica", "bold");
   pdf.text("Petugas:", 12, y);
   pdf.setFont("helvetica", "normal");
-  pdf.text(disposisi.petugas || "-", 32, y);
+  pdf.text(disposisi.pic || "-", 32, y);
   y += 6;
 
   pdf.setFont("helvetica", "bold");

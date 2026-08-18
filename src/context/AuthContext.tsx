@@ -148,7 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const existing = usersList.find((u) => u.email.toLowerCase() === email.toLowerCase() || u.id === fbUser.uid);
           const isAdminEmail = email.toLowerCase().includes('admin') || email.toLowerCase().includes('ardannetwork');
           if (existing) {
-            return { ...existing, role: isAdminEmail ? 'admin' : existing.role, approved: true };
+            return { ...existing, role: isAdminEmail ? 'admin' : existing.role };
           }
           const newUser: UserAccount = {
             id: fbUser.uid,
@@ -156,7 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             name: fbUser.displayName || email.split('@')[0] || 'Pengguna',
             password: '',
             role: isAdminEmail || usersList.length === 0 ? 'admin' : 'operator',
-            approved: true,
+            approved: isAdminEmail || usersList.length === 0,
             createdAt: new Date().toISOString(),
           };
           return newUser;
@@ -177,7 +177,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         snapshot.forEach((docSnap) => {
           users.push({ id: docSnap.id, ...docSnap.data() } as UserAccount);
         });
-        setUsersList(users);
+        setUsersList((prev) => {
+          const firestoreIds = new Set(users.map((u) => u.id));
+          const localOnly = prev.filter((u) => !firestoreIds.has(u.id));
+          return [...users, ...localOnly];
+        });
       }, (err) => {
         console.warn('Firestore users listener error:', err);
       });
@@ -265,29 +269,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const updatedTarget = { 
           ...target, 
           role: isAdminEmail ? 'admin' : target.role,
-          approved: true 
         };
         setUsersList((prev) => prev.map((u) => u.id === target.id ? updatedTarget : u));
         syncUserToFirestore(updatedTarget);
         setCurrentUser(updatedTarget);
         return { success: true, message: 'Login Google berhasil!', user: updatedTarget };
       } else {
-        // Auto register as approved user so Google logins go directly to Dashboard
         const newUser: UserAccount = {
           id: fbUser.uid,
           email,
           name: fbUser.displayName || email.split('@')[0] || 'Pengguna Google',
           password: '', 
           role: isAdminEmail || usersList.filter(u => !u.id.startsWith('demo-')).length === 0 ? 'admin' : 'operator', 
-          approved: true, // Auto approve Google OAuth accounts
+          approved: isAdminEmail || usersList.filter(u => !u.id.startsWith('demo-')).length === 0,
           createdAt: new Date().toISOString(),
         };
         
         setUsersList((prev) => [...prev, newUser]);
         syncUserToFirestore(newUser);
-        setCurrentUser(newUser); // Redirect directly to dashboard!
+        setCurrentUser(newUser);
         
-        return { success: true, message: 'Login Google berhasil! Selamat datang.', user: newUser };
+        return { success: true, message: 'Login Google berhasil! Akun Anda sedang menunggu persetujuan Admin.', user: newUser };
       }
     } catch (err: any) {
       console.warn('Google login error', err);
@@ -495,7 +497,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sifat: 'Biasa',
       hal: submission.hal,
       hal_type: submission.hal_type,
+      pic: '',
       petugas: '',
+      kabupaten: submission.kabupaten,
       catatan: [],
       link_dokumen: submission.link_dokumen,
       status: false,
@@ -557,7 +561,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       approveUser,
       rejectUser,
       deleteUser: rejectUser,
-      updateCurrentUser,
       addDisposisi,
       updateDisposisi,
       deleteDisposisi,

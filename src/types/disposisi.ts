@@ -23,7 +23,9 @@ export interface DisposisiSurat {
   sifat: string;
   hal: string; // Selected from HAL_SERTIFIKASI or HAL_WASAR
   hal_type: HalType; // Sertifikasi or Wasar category
-  petugas: string; // PBT Name
+  pic: string; // Nama PIC
+  petugas: string; // Nama Petugas PBT yang ditugaskan
+  kabupaten: string;
   catatan: string[]; // Array of selected checkbox texts
   catatan_lain?: string; // Text if "Lain-lain" checked
   link_dokumen: string; // Google Drive PDF URL
@@ -42,6 +44,7 @@ export interface PublicSuratSubmission {
   surat_dari: string;
   hal_type: HalType;
   hal: string;
+  kabupaten: string;
   link_dokumen: string;
   status: 'pending' | 'processed' | 'rejected';
   created_at: string;

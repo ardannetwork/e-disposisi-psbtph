@@ -169,27 +169,25 @@ export const PublicSubmissionsReview: React.FC = () => {
     setDeleteTarget(submission);
   };
 
-  // Confirm rejection + delete
+  // Confirm rejection
   const handleConfirmReject = async () => {
     if (!deleteTarget) return;
-    const { id, link_dokumen } = deleteTarget;
+    const { id } = deleteTarget;
     setIsDeleting(true);
     setLocalStatusOverrides((prev) => ({ ...prev, [id]: 'rejected' }));
+    setActionErrors((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     try {
-      // Optimistically hide it
-      setLocalDeletedIds((prev) => [...prev, id]);
-      await deletePublicSubmission(id, link_dokumen);
-      // Clean override after successful deletion
-      setLocalStatusOverrides((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
+      await updatePublicSubmissionStatus(id, 'rejected');
+      setFilter('rejected');
     } catch (err) {
-      console.error('Failed to delete submission:', err);
+      console.error('Failed to reject submission:', err);
       setActionErrors((prev) => ({
         ...prev,
-        [id]: err instanceof Error ? err.message : 'Gagal menghapus permohonan',
+        [id]: err instanceof Error ? err.message : 'Gagal menolak permohonan',
       }));
     } finally {
       setIsDeleting(false);
@@ -341,7 +339,7 @@ export const PublicSubmissionsReview: React.FC = () => {
         ) : (
           <div className="space-y-3">
             {sorted.map((submission) => {
-              const effectiveStatus = localStatusOverrides[submission.id] || submission.status;
+              const effectiveStatus = (localStatusOverrides[submission.id] || submission.status) as PublicSuratSubmission['status'];
               const isPending = effectiveStatus === 'pending';
 
               return (
@@ -364,6 +362,9 @@ export const PublicSubmissionsReview: React.FC = () => {
                         </span>
                         <span className="px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 font-semibold">
                           {submission.hal}
+                        </span>
+                        <span className="px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 font-semibold">
+                          Kabupaten: {submission.kabupaten || '-'}
                         </span>
                       </div>
 
@@ -403,21 +404,19 @@ export const PublicSubmissionsReview: React.FC = () => {
 
                     {/* ACTION AREA */}
                     <div className="shrink-0">
-                      {canReview && (
+                      {canReview && effectiveStatus === 'pending' && (
                         <div className="flex items-center gap-2">
-                          {/* PROCESSED BUTTON - Hanya tampil jika pending */}
-                          {isPending && (
-                            <button
-                              onClick={() => handleProcessed(submission)}
-                              disabled={processingId === submission.id}
-                              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                              {processingId === submission.id ? 'Memproses...' : 'Processed'}
-                            </button>
-                          )}
+                          {/* PROCESSED BUTTON */}
+                          <button
+                            onClick={() => handleProcessed(submission)}
+                            disabled={processingId === submission.id}
+                            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            {processingId === submission.id ? 'Memproses...' : 'Processed'}
+                          </button>
 
-                          {/* REJECTED BUTTON - Tampil di pending maupun processed */}
+                          {/* REJECTED BUTTON */}
                           <button
                             onClick={() => handleRejectClick(submission)}
                             disabled={processingId === submission.id}
@@ -453,7 +452,7 @@ export const PublicSubmissionsReview: React.FC = () => {
               <p className="text-sm text-slate-400 mb-3">
                 Permohonan dari{' '}
                 <span className="text-rose-300 font-semibold">{deleteTarget.surat_dari}</span>{' '}
-                akan ditolak dan <strong className="text-white">dihapus permanen</strong>.
+                akan <strong className="text-white">ditolak</strong>.
               </p>
               <div className="w-full bg-slate-800/80 border border-slate-700 rounded-xl p-3 mb-4 text-left space-y-1">
                 <p className="text-xs text-slate-300">
@@ -462,11 +461,9 @@ export const PublicSubmissionsReview: React.FC = () => {
                 <p className="text-xs text-slate-300">
                   <span className="font-semibold text-slate-400">Kategori:</span> {deleteTarget.hal_type}
                 </p>
-                {deleteTarget.link_dokumen && (
-                  <p className="text-xs text-amber-300 font-semibold mt-1">
-                    ⚠ File dokumen yang terupload juga akan dihapus dari Storage.
-                  </p>
-                )}
+                <p className="text-xs text-slate-300">
+                  <span className="font-semibold text-slate-400">Kabupaten:</span> {deleteTarget.kabupaten || '-'}
+                </p>
               </div>
               <div className="flex gap-3 w-full">
                 <button
@@ -481,7 +478,7 @@ export const PublicSubmissionsReview: React.FC = () => {
                   disabled={isDeleting}
                   className="flex-1 px-4 py-2.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-sm font-semibold hover:bg-rose-500/30 transition-all shadow-lg shadow-rose-500/10 disabled:opacity-50"
                 >
-                  {isDeleting ? 'Menghapus...' : 'Ya, Tolak & Hapus'}
+                  {isDeleting ? 'Menolak...' : 'Ya, Tolak'}
                 </button>
               </div>
             </div>

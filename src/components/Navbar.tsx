@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { PETUGAS_PBT_LIST, UserRole } from '../types/disposisi';
 import { ShieldCheck, UserCheck, RefreshCw, Sparkles, AlertCircle, Key, LogOut, Wallet, Sun, Moon, Menu, User } from 'lucide-react';
+import logoImage from '../image/Gemini_Generated_Image_txdza3txdza3txdz.jpg';
 
 interface NavbarProps {
   onOpenFirebaseModal: () => void;
@@ -87,9 +88,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenFirebaseModal, onToggleSid
             <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-green-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white text-base sm:text-xl font-bold flex-shrink-0">
-            🌱
-          </div>
+          <img
+            src={logoImage}
+            alt="Logo E-Disposisi"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl object-cover shadow-lg shadow-emerald-500/20 flex-shrink-0"
+          />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <h1 className="font-extrabold text-sm sm:text-base lg:text-lg tracking-tight bg-gradient-to-r from-emerald-400 via-teal-300 to-white bg-clip-text text-transparent truncate">

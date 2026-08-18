@@ -19,7 +19,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
 
   // Filter list if PBT
   const relevantList = isPbt
-    ? disposisiList.filter((d) => d.petugas === pbtName)
+    ? disposisiList.filter((d) => d.pic === pbtName)
     : disposisiList;
 
   const totalSurat = relevantList.length;
@@ -33,7 +33,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
 
   // PBT Workload Breakdown
   const pbtWorkload = PETUGAS_PBT_LIST.map((pbt) => {
-    const assigned = disposisiList.filter((d) => d.petugas === pbt);
+    const assigned = disposisiList.filter((d) => d.pic === pbt);
     const completed = assigned.filter((d) => d.status).length;
     return {
       name: pbt,

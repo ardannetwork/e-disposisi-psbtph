@@ -17,6 +17,7 @@ import {
   Building,
   FileText,
 } from 'lucide-react';
+import logoImage from '../image/Gemini_Generated_Image_txdza3txdza3txdz.jpg';
 
 export const LoginRegister: React.FC = () => {
   const { login, loginWithGoogle, registerUser, switchDemoRole } = useAuth();
@@ -104,9 +105,11 @@ export const LoginRegister: React.FC = () => {
       <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl shadow-2xl overflow-hidden relative z-10 animate-in fade-in zoom-in-95 duration-300">
         {/* BRANDING HEADER */}
         <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-center border-b border-slate-800 relative">
-          <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-green-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-3xl">
-            🌱
-          </div>
+          <img
+            src={logoImage}
+            alt="Logo E-Disposisi"
+            className="w-14 h-14 mx-auto mb-3 rounded-2xl object-cover shadow-lg shadow-emerald-500/20"
+          />
           <h1 className="text-xl font-extrabold bg-gradient-to-r from-emerald-400 via-teal-300 to-white bg-clip-text text-transparent">
             E-Disposisi Surat UPT PSBTPH
           </h1>

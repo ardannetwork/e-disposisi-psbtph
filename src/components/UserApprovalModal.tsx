@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { UserRole, PETUGAS_PBT_LIST } from '../types/disposisi';
+import { UserRole, PETUGAS_PBT_LIST, UserAccount } from '../types/disposisi';
 import { UserCheck, ShieldAlert, Check, X, UserPlus, Shield, Trash2, Pencil } from 'lucide-react';
 
 export const UserApprovalModal: React.FC = () => {
