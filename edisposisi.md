@@ -52,10 +52,11 @@ e-disposisi-psbtph/
         ├── Navbar.tsx              # Header branding, indikator role, logout confirmation modal, theme toggle, & mobile responsive
         ├── Sidebar.tsx             # Sidebar navigasi sesuai hak akses role
         ├── DashboardStats.tsx      # Analytics KPI cards & grafik penugasan PBT
-        ├── SuratList.tsx           # Tabel rekapitulasi surat, filter, ekspor docx, & custom delete confirmation modal
+        ├── SuratList.tsx           # Tabel rekapitulasi surat, filter, ekspor docx, pagination, & custom delete confirmation modal
         ├── SuratFormModal.tsx      # Modal form input surat baru & disposisi admin
-        ├── BendaharaPage.tsx       # Halaman Bendahara untuk mengedit field pembayaran
-        ├── UserApprovalModal.tsx   # Panel persetujuan registrasi & hapus user aktif
+        ├── BendaharaPage.tsx       # Halaman Bendahara untuk mengedit field pembayaran dengan pagination
+        ├── UserApprovalModal.tsx   # Panel persetujuan registrasi & hapus user aktif dengan pagination
+        ├── Pagination.tsx          # Komponen reusable pagination untuk tabel data
         ├── LoginRegister.tsx       # Halaman Login, Registrasi, & Tab Permohonan Surat Publik
         ├── PublicSuratForm.tsx     # Form permohonan surat publik (tanpa login)
         ├── PublicSubmissionsReview.tsx # Halaman review permohonan publik (Operator/Admin) dengan optimistic status update
@@ -80,14 +81,20 @@ Sistem menggunakan 3 koleksi utama di Cloud Firestore (atau LocalStorage pada mo
 | `sifat` | String | Sifat surat (`Biasa`, `Penting`, `Segera`, `Rahasia`) |
 | `hal_type` | String | Jenis perihal: `Sertifikasi` atau `Wasar` |
 | `hal` | String | Rincian kategori perihal (Dropdown Pilihan) |
+| `pic` | String | Nama PIC / penanggungjawab |
 | `petugas` | String | Nama Petugas PBT yang ditugaskan (Dropdown 8 PBT) |
+| `kabupaten` | String | Kabupaten asal permohonan |
 | `catatan` | Array<String> | Opsi instruksi disposisi yang dicentang |
-| `catatan_lain` | String | Teks instruksi manual jika *"Lain-lain"* dicentang |
+| `catatan_lain` | String (Optional) | Teks instruksi manual jika *"Lain-lain"* dicentang |
 | `link_dokumen` | String (URL) | Link Google Drive PDF berkas surat masuk |
 | `status` | Boolean | Status penyelesaian tugas PBT (`true` = Selesai, `false` = Belum) |
 | `tanggal_disposisi`| String (Date) | Tanggal disposisi ditetapkan oleh Admin |
 | `disposisi_oleh` | String | Nama Admin Koordinator yang memproses disposisi |
 | `pembayaran` | String (Optional) | Status pembayaran untuk Bendahara (`Belum Dibayar`, `DP 50%`, `Lunas`, `Dicicil`, `Dibatalkan`) |
+| `catatan_text` | String (Optional) | Catatan teks tambahan |
+| `nip_oleh` | String (Optional) | NIP petugas yang menandai |
+| `created_at` | String (Timestamp) | Tanggal & waktu data dibuat |
+| `updated_at` | String (Timestamp) | Tanggal & waktu data terakhir diperbarui |
 
 #### A. Rincian Pilihan Dropdown `hal`:
 * **Kategori A. Sertifikasi Benih:**
@@ -141,6 +148,7 @@ Sistem menggunakan 3 koleksi utama di Cloud Firestore (atau LocalStorage pada mo
 | `surat_dari` | String | Asal instansi / kelompok tani / produsen pemohon |
 | `hal_type` | String | Jenis perihal: `Sertifikasi` atau `Wasar` |
 | `hal` | String | Rincian kategori perihal (Dropdown Pilihan) |
+| `kabupaten` | String | Kabupaten asal permohonan publik |
 | `link_dokumen` | String (URL/DataURL) | Link Google Drive PDF atau file terkompresi base64 |
 | `status` | String | Status review: `pending` | `processed` | `rejected` |
 | `created_at` | String (Timestamp) | Tanggal & waktu permohonan dibuat |
@@ -206,6 +214,18 @@ Aplikasi telah dioptimalkan untuk perangkat mobile dengan layout yang adaptif:
 - **Form**: input dan tombol menyesuaikan ukuran layar
 - **Modal**: dialog konfirmasi dan form modal menyesuaikan layar mobile
 
+## 🔽 Dropdown Role Switcher (Navbar)
+
+Dropdown simulasi switch role di navbar telah diperbaiki untuk memastikan tampilannya tidak tertutup atau terpotong oleh elemen lain.
+
+### Perbaikan yang Diterapkan:
+- **Z-index stacking**: header navbar dinaikkan ke `z-[60]` dan dropdown role ke `z-[70]` agar muncul di atas sidebar (`z-50`) dan konten utama
+- **Overflow handling**: mengganti `overflow-hidden` menjadi `overflow-x-hidden` pada header agar dropdown yang `absolute` tidak terpotong secara vertikal
+- **Klik-luar untuk menutup**: menambahkan listener `mousedown` menggunakan `useRef` dan `useEffect` sehingga dropdown otomatis tertutup saat pengguna mengklik area di luar dropdown
+
+### Lokasi File:
+- [`src/components/Navbar.tsx`](src/components/Navbar.tsx) — baris 78 (header) dan baris 128-283 (dropdown role switcher)
+
 ---
 
 ## 📝 Form Permohonan Surat Publik (Tanpa Login)
@@ -262,11 +282,39 @@ Sistem menggunakan dialog konfirmasi custom (bukan dialog native browser) untuk 
 - **Hapus Surat**: di `SuratList.tsx` saat menekan tombol hapus pada baris tabel surat
 - **Logout**: di `Navbar.tsx` saat menekan tombol logout, menampilkan dialog konfirmasi sebelum keluar dari sistem
 
+## 📄 Pagination Tabel Data
+
+Semua tabel data di aplikasi kini dilengkapi fitur **pagination** untuk meningkatkan performansi dan kemudahan navigasi saat jumlah data banyak.
+
+### Komponen Pagination:
+- **File**: [`src/components/Pagination.tsx`](src/components/Pagination.tsx)
+- **Page Size**: 10 data per halaman
+- **Fitur**:
+  - Navigasi halaman dengan tombol **Sebelum** dan **Berikut**
+  - Indikator nomor halaman aktif dengan highlight warna emerald
+  - Ellipsis (`...`) untuk menampilkan halaman yang banyak
+  - Informasi rentang data: *"Menampilkan 1-10 dari 50 data"*
+  - Otomatis disembunyikan jika total data ≤ 10 atau hanya 1 halaman
+
+### Tabel yang Dilengkapi Pagination:
+- **SuratList.tsx** — tabel rekapitulasi surat disposisi
+- **BendaharaPage.tsx** — tabel kelola pembayaran
+- **UserApprovalModal.tsx** — tabel pengguna aktif yang disetujui
+
+### Implementasi:
+Setiap komponen tabel menggunakan `.slice()` untuk memotong data sesuai halaman aktif:
+```tsx
+const [page, setPage] = useState(1);
+const PAGE_SIZE = 10;
+// Render hanya data di halaman aktif
+filteredData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+```
+
 ---
 
 ## 🖨️ Fitur Mail Merge (Ekspor Dokumen `.docx`)
 
-File service [`src/services/docxtemplater.ts`](file:///Users/macintoshhd/.gemini/antigravity/scratch/e-disposisi-psbtph/src/services/docxtemplater.ts) memuat template XML dokumen Microsoft Word instansi. 
+File service [`src/services/docxtemplater.ts`](src/services/docxtemplater.ts) memuat template XML dokumen Microsoft Word instansi. 
 
 Saat tombol **`.docx`** diklik pada baris tabel:
 1. Data dokumen diambil dari Firestore/LocalStorage.
@@ -280,7 +328,6 @@ Saat tombol **`.docx`** diklik pada baris tabel:
 
 ### 1. Menjalankan Server Pengembangan (Dev Server):
 ```bash
-cd /Users/macintoshhd/.gemini/antigravity/scratch/e-disposisi-psbtph
 npm install
 npm run dev
 ```

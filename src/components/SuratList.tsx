@@ -19,6 +19,7 @@ import {
   Eye,
   AlertTriangle,
 } from 'lucide-react';
+import { Pagination } from './Pagination';
 
 interface SuratListProps {
   onOpenEditModal: (disposisi: DisposisiSurat) => void;
@@ -40,6 +41,8 @@ export const SuratList: React.FC<SuratListProps> = ({
   const [filterHalType, setFilterHalType] = useState<'all' | 'Sertifikasi' | 'Wasar'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'selesai' | 'belum'>('all');
   const [filterPbt, setFilterPbt] = useState<string>('all');
+  const [suratListPage, setSuratListPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   // Preview Modal state
   const [selectedPreviewDoc, setSelectedPreviewDoc] = useState<DisposisiSurat | null>(null);
@@ -91,9 +94,14 @@ export const SuratList: React.FC<SuratListProps> = ({
     setShowDeleteConfirm(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTarget) {
-      deleteDisposisi(deleteTarget.id);
+      try {
+        await deleteDisposisi(deleteTarget.id);
+      } catch (err) {
+        console.error('Failed to delete disposisi', err);
+        alert('Gagal menghapus data dari Firestore. Periksa koneksi dan izin akses, lalu coba lagi.');
+      }
     }
     setShowDeleteConfirm(false);
     setDeleteTarget(null);
@@ -210,14 +218,16 @@ export const SuratList: React.FC<SuratListProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredDisposisi.map((item) => {
-                  const isAssignedToCurrentPbt = isPbt && item.pic === currentUser?.pbt_name;
+                filteredDisposisi
+                  .slice((suratListPage - 1) * PAGE_SIZE, suratListPage * PAGE_SIZE)
+                  .map((item) => {
+                    const isAssignedToCurrentPbt = isPbt && item.pic === currentUser?.pbt_name;
 
-                  return (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-slate-800/40 transition-colors group"
-                    >
+                    return (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-800/40 transition-colors group"
+                      >
                       {/* STATUS CHECKBOX (INTERACTIVE FOR PBT OR ADMIN) */}
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex flex-col items-center gap-1">
@@ -443,8 +453,15 @@ export const SuratList: React.FC<SuratListProps> = ({
                 >
                   Ya, Hapus
                 </button>
-              </div>
-            </div>
+        </div>
+        <Pagination
+          currentPage={suratListPage}
+          totalPages={Math.ceil(filteredDisposisi.length / PAGE_SIZE)}
+          onPageChange={setSuratListPage}
+          totalItems={filteredDisposisi.length}
+          pageSize={PAGE_SIZE}
+        />
+      </div>
           </div>
         </div>
       )}

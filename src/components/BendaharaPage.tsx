@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { DisposisiSurat } from '../types/disposisi';
 import { Wallet, Save, Search, ArrowUpDown } from 'lucide-react';
+import { Pagination } from './Pagination';
 
 const PEMBAYARAN_OPTIONS = ['Belum Dibayar', 'DP 50%', 'Lunas', 'Dicicil', 'Dibatalkan'];
 
@@ -10,6 +11,8 @@ export const BendaharaPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingPembayaran, setEditingPembayaran] = useState('');
+  const [disposisiPage, setDisposisiPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const filteredDisposisi = disposisiList.filter(
     (item) =>
@@ -23,9 +26,14 @@ export const BendaharaPage: React.FC = () => {
     setEditingPembayaran(item.pembayaran || '');
   };
 
-  const handleSave = (id: string) => {
-    updateDisposisi(id, { pembayaran: editingPembayaran });
-    setEditingId(null);
+  const handleSave = async (id: string) => {
+    try {
+      await updateDisposisi(id, { pembayaran: editingPembayaran });
+      setEditingId(null);
+    } catch (err) {
+      console.error('Failed to update pembayaran', err);
+      alert('Gagal menyimpan perubahan pembayaran ke Firestore. Periksa koneksi dan izin akses, lalu coba lagi.');
+    }
   };
 
   const handleCancel = () => {
@@ -81,73 +89,75 @@ export const BendaharaPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredDisposisi.map((item) => (
-                <tr key={item.id} className="border-b border-slate-800/60 hover:bg-slate-800/40 transition-colors">
-                  <td className="py-2.5 px-3 font-mono text-emerald-400">{item.nomor_agenda}</td>
-                  <td className="py-2.5 px-3 text-slate-200 max-w-[200px] truncate">{item.surat_dari}</td>
-                  <td className="py-2.5 px-3 text-slate-300 max-w-[180px] truncate">{item.pic}</td>
-                  <td className="py-2.5 px-3">
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                      item.status
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                    }`}>
-                      {item.status ? 'Selesai' : 'Belum'}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    {editingId === item.id ? (
-                      <select
-                        value={editingPembayaran}
-                        onChange={(e) => setEditingPembayaran(e.target.value)}
-                        className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
-                      >
-                        <option value="">-- Pilih Status --</option>
-                        {PEMBAYARAN_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
-                        item.pembayaran === 'Lunas'
+              {filteredDisposisi
+                .slice((disposisiPage - 1) * PAGE_SIZE, disposisiPage * PAGE_SIZE)
+                .map((item) => (
+                  <tr key={item.id} className="border-b border-slate-800/60 hover:bg-slate-800/40 transition-colors">
+                    <td className="py-2.5 px-3 font-mono text-emerald-400">{item.nomor_agenda}</td>
+                    <td className="py-2.5 px-3 text-slate-200 max-w-[200px] truncate">{item.surat_dari}</td>
+                    <td className="py-2.5 px-3 text-slate-300 max-w-[180px] truncate">{item.pic}</td>
+                    <td className="py-2.5 px-3">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                        item.status
                           ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          : item.pembayaran === 'Belum Dibayar'
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                          : item.pembayaran === 'Dibatalkan'
-                          ? 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
                           : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                       }`}>
-                        {item.pembayaran || '-- Belum Diatur --'}
+                        {item.status ? 'Selesai' : 'Belum'}
                       </span>
-                    )}
-                  </td>
-                  <td className="py-2.5 px-3 text-right">
-                    {editingId === item.id ? (
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => handleSave(item.id)}
-                          className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold transition-colors"
+                    </td>
+                    <td className="py-2.5 px-3">
+                      {editingId === item.id ? (
+                        <select
+                          value={editingPembayaran}
+                          onChange={(e) => setEditingPembayaran(e.target.value)}
+                          className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
                         >
-                          <Save className="w-3 h-3 inline" />
-                        </button>
+                          <option value="">-- Pilih Status --</option>
+                          {PEMBAYARAN_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
+                          item.pembayaran === 'Lunas'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : item.pembayaran === 'Belum Dibayar'
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                            : item.pembayaran === 'Dibatalkan'
+                            ? 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        }`}>
+                          {item.pembayaran || '-- Belum Diatur --'}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3 text-right">
+                      {editingId === item.id ? (
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleSave(item.id)}
+                            className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold transition-colors"
+                          >
+                            <Save className="w-3 h-3 inline" />
+                          </button>
+                          <button
+                            onClick={handleCancel}
+                            className="px-2 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] font-bold transition-colors"
+                          >
+                            Batal
+                          </button>
+                        </div>
+                      ) : (
                         <button
-                          onClick={handleCancel}
-                          className="px-2 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] font-bold transition-colors"
+                          onClick={() => handleEditClick(item)}
+                          className="px-2 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] font-semibold transition-colors"
                         >
-                          Batal
+                          Edit
                         </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleEditClick(item)}
-                        className="px-2 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] font-semibold transition-colors"
-                      >
-                        Edit
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      )}
+                    </td>
+                  </tr>
+                ))}
               {filteredDisposisi.length === 0 && (
                 <tr>
                   <td colSpan={6} className="py-4 px-3 text-center text-slate-500 text-xs">
@@ -158,6 +168,13 @@ export const BendaharaPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={disposisiPage}
+          totalPages={Math.ceil(filteredDisposisi.length / PAGE_SIZE)}
+          onPageChange={setDisposisiPage}
+          totalItems={filteredDisposisi.length}
+          pageSize={PAGE_SIZE}
+        />
       </div>
     </div>
   );

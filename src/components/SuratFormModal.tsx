@@ -286,7 +286,7 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!suratDari || !nomorSurat || !tanggalSurat || !nomorAgenda) {
@@ -319,17 +319,22 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
       disposisi_oleh: isAdmin || mode === 'disposisi' ? currentUser?.name || 'Avianita Agustina, S.TP.' : initialData?.disposisi_oleh || 'Avianita Agustina, S.TP.',
     };
 
-    if (initialData) {
-      updateDisposisi(initialData.id, payload);
-    } else {
-      addDisposisi(payload);
-    }
+    try {
+      if (initialData) {
+        await updateDisposisi(initialData.id, payload);
+      } else {
+        await addDisposisi(payload);
+      }
 
-    if (onSuccess) {
-      onSuccess();
-    }
+      if (onSuccess) {
+        onSuccess();
+      }
 
-    onClose();
+      onClose();
+    } catch (err) {
+      console.error('Failed to save disposisi', err);
+      alert('Gagal menyimpan data ke Firestore. Periksa koneksi dan izin akses, lalu coba lagi.');
+    }
   };
 
   if (!isOpen) return null;

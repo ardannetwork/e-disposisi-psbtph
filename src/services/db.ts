@@ -73,7 +73,7 @@ export const syncDisposisiToFirestore = async (item: DisposisiSurat) => {
 export const updateDisposisiInFirestore = async (id: string, data: Partial<DisposisiSurat>) => {
   if (!firebaseDb) return;
   try {
-    await updateDoc(doc(firebaseDb, SURAT_COLLECTION, id), data);
+    await setDoc(doc(firebaseDb, SURAT_COLLECTION, id), data, { merge: true });
   } catch (err) {
     console.error('Error updating disposisi in Firestore:', err);
   }

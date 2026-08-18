@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { UserRole, PETUGAS_PBT_LIST, UserAccount } from '../types/disposisi';
 import { UserCheck, ShieldAlert, Check, X, UserPlus, Shield, Trash2, Pencil } from 'lucide-react';
+import { Pagination } from './Pagination';
 
 export const UserApprovalModal: React.FC = () => {
   const { usersList, approveUser, rejectUser, deleteUser, registerUser, updateUser, currentUser, isFirebaseActive } = useAuth();
@@ -36,6 +37,8 @@ export const UserApprovalModal: React.FC = () => {
   const [editRole, setEditRole] = useState<UserRole>('operator');
   const [editPbtName, setEditPbtName] = useState<string>(PETUGAS_PBT_LIST[0]);
   const [editApproved, setEditApproved] = useState(true);
+  const [activeUsersPage, setActiveUsersPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const handleOpenEditModal = (user: UserAccount) => {
     setEditingUser(user);
@@ -82,11 +85,11 @@ export const UserApprovalModal: React.FC = () => {
     }
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regEmail || !regName) return;
 
-    const res = registerUser(regEmail, regName, '123456', regRole, regRole === 'pbt' ? regPbtName : undefined);
+    const res = await registerUser(regEmail, regName, '123456', regRole, regRole === 'pbt' ? regPbtName : undefined);
     alert(res.message);
     if (res.success) {
       setRegEmail('');
@@ -310,56 +313,65 @@ export const UserApprovalModal: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800 text-slate-200">
-              {activeUsers.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="py-3 px-4 font-semibold text-slate-100">{u.name}</td>
-                  <td className="py-3 px-4 text-slate-400">{u.email}</td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-md font-bold text-[10px] uppercase ${
-                        u.role === 'admin'
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          : u.role === 'operator'
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                      }`}
-                    >
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-slate-300">
-                    {u.role === 'pbt' ? u.pbt_name || '-' : '-'}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-bold">
-                      Aktif & Approved
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => handleOpenEditModal(u)}
-                        className="p-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 transition-colors inline-flex items-center gap-1"
-                        title="Edit Data & Role Pengguna Ini"
+              {activeUsers
+                .slice((activeUsersPage - 1) * PAGE_SIZE, activeUsersPage * PAGE_SIZE)
+                .map((u) => (
+                  <tr key={u.id} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="py-3 px-4 font-semibold text-slate-100">{u.name}</td>
+                    <td className="py-3 px-4 text-slate-400">{u.email}</td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`px-2.5 py-0.5 rounded-md font-bold text-[10px] uppercase ${
+                          u.role === 'admin'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : u.role === 'operator'
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        }`}
                       >
-                        <Pencil className="w-3.5 h-3.5" />
-                        <span className="text-[11px] font-semibold">Edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteActiveUser(u.id, u.name)}
-                        className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors inline-flex items-center gap-1"
-                        title="Hapus Akun Pengguna Ini"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span className="text-[11px] font-semibold">Hapus</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        {u.role}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-slate-300">
+                      {u.role === 'pbt' ? u.pbt_name || '-' : '-'}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-bold">
+                        Aktif & Approved
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleOpenEditModal(u)}
+                          className="p-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 transition-colors inline-flex items-center gap-1"
+                          title="Edit Data & Role Pengguna Ini"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span className="text-[11px] font-semibold">Edit</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteActiveUser(u.id, u.name)}
+                          className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors inline-flex items-center gap-1"
+                          title="Hapus Akun Pengguna Ini"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="text-[11px] font-semibold">Hapus</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={activeUsersPage}
+          totalPages={Math.ceil(activeUsers.length / PAGE_SIZE)}
+          onPageChange={setActiveUsersPage}
+          totalItems={activeUsers.length}
+          pageSize={PAGE_SIZE}
+        />
       </div>
 
       {/* EDIT USER MODAL */}

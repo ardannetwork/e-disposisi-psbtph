@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserAccount, UserRole, DisposisiSurat, PublicSuratSubmission } from '../types/disposisi';
-import { INITIAL_USERS, INITIAL_DISPOSISI_SURAT } from '../data/mockData';
 import { firebaseDb, firebaseAuth } from '../services/firebase';
 import {
   getLocalDisposisi,
@@ -30,25 +29,24 @@ interface AuthContextType {
   publicSubmissionsList: PublicSuratSubmission[];
   theme: string;
   toggleTheme: () => void;
-  login: (email: string, pass: string) => { success: boolean; message: string; user?: UserAccount };
+  login: (email: string, pass: string) => Promise<{ success: boolean; message: string; user?: UserAccount }>;
   loginWithGoogle: () => Promise<{ success: boolean; message: string; user?: UserAccount }>;
   logout: () => void;
-  switchDemoRole: (role: UserRole, pbtName?: string) => void;
   registerUser: (
     email: string,
     name: string,
     pass: string,
     role: UserRole,
     pbtName?: string
-  ) => { success: boolean; message: string };
+  ) => Promise<{ success: boolean; message: string }>;
   updateUser: (userId: string, data: Partial<UserAccount>) => void;
   approveUser: (userId: string, role: UserRole, pbtName?: string) => void;
   rejectUser: (userId: string) => void;
   deleteUser: (userId: string) => void;
   updateCurrentUser: (data: Partial<UserAccount>) => void;
-  addDisposisi: (data: Omit<DisposisiSurat, 'id' | 'created_at' | 'updated_at'>) => void;
-  updateDisposisi: (id: string, data: Partial<DisposisiSurat>) => void;
-  deleteDisposisi: (id: string) => void;
+  addDisposisi: (data: Omit<DisposisiSurat, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateDisposisi: (id: string, data: Partial<DisposisiSurat>) => Promise<void>;
+  deleteDisposisi: (id: string) => Promise<void>;
   togglePbtStatus: (id: string, newStatus: boolean) => void;
   updatePublicSubmissionStatus: (id: string, status: 'processed' | 'rejected') => Promise<void>;
   processPublicSubmission: (id: string, submission?: PublicSuratSubmission) => Promise<void>;
@@ -63,23 +61,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const CURRENT_USER_STORAGE_KEY = 'e_disposisi_logged_user';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [usersList, setUsersList] = useState<UserAccount[]>(() => {
-    const saved = getLocalUsers();
-    return saved.length > 0 ? saved : INITIAL_USERS;
-  });
+  const [isFirebaseActive, setIsFirebaseActive] = useState(false);
 
-  const [disposisiList, setDisposisiList] = useState<DisposisiSurat[]>(() => {
-    const saved = getLocalDisposisi();
-    return saved.length > 0 ? saved : INITIAL_DISPOSISI_SURAT;
-  });
+  const [usersList, setUsersList] = useState<UserAccount[]>([]);
 
-  const [publicSubmissionsList, setPublicSubmissionsList] = useState<PublicSuratSubmission[]>(() => {
-    if (!firebaseDb) {
-      const saved = getLocalPublicSubmissions();
-      return saved.length > 0 ? saved : [];
-    }
-    return [];
-  });
+  const [disposisiList, setDisposisiList] = useState<DisposisiSurat[]>([]);
+
+  const [publicSubmissionsList, setPublicSubmissionsList] = useState<PublicSuratSubmission[]>([]);
 
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
     const saved = localStorage.getItem(CURRENT_USER_STORAGE_KEY);
@@ -97,8 +85,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const saved = localStorage.getItem('e_disposisi_theme');
     return saved || 'dark';
   });
-
-  const isFirebaseActive = !!firebaseDb;
 
   useEffect(() => {
     saveLocalUsers(usersList);
@@ -139,7 +125,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!firebaseAuth) return;
     const unsubscribe = onAuthStateChanged(firebaseAuth, (fbUser) => {
       if (fbUser) {
-        // If Firebase Auth has a logged in user, check if we need to sync local currentUser
         setCurrentUser((prev) => {
           if (prev && (prev.id === fbUser.uid || prev.email.toLowerCase() === fbUser.email?.toLowerCase())) {
             return prev;
@@ -161,6 +146,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
           return newUser;
         });
+      } else {
+        setCurrentUser(null);
       }
     });
     return () => unsubscribe();
@@ -168,11 +155,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sync with Firestore Realtime listeners
   useEffect(() => {
-    if (!firebaseDb) return;
+    if (!firebaseDb) {
+      setIsFirebaseActive(false);
+      setDisposisiList(getLocalDisposisi());
+      setPublicSubmissionsList(getLocalPublicSubmissions());
+      return;
+    }
+
+    let hasConnected = false;
+    let unsubUsers: (() => void) | null = null;
+    let unsubSurat: (() => void) | null = null;
+    let unsubPublic: (() => void) | null = null;
+
+    const markConnected = () => {
+      if (!hasConnected) {
+        hasConnected = true;
+        setIsFirebaseActive(true);
+      }
+    };
 
     try {
-      // Listener users selalu aktif agar admin (maupun mode demo) dapat melihat daftar user Firestore
-      const unsubUsers = onSnapshot(collection(firebaseDb, 'users'), (snapshot) => {
+      unsubUsers = onSnapshot(collection(firebaseDb, 'users'), (snapshot) => {
+        markConnected();
         const users: UserAccount[] = [];
         snapshot.forEach((docSnap) => {
           users.push({ id: docSnap.id, ...docSnap.data() } as UserAccount);
@@ -184,47 +188,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }, (err) => {
         console.warn('Firestore users listener error:', err);
+        if (!hasConnected) {
+          setIsFirebaseActive(false);
+        }
       });
 
-      let unsubSurat: (() => void) | null = null;
-      let unsubPublic: (() => void) | null = null;
-
-      if (currentUser && !currentUser.id.startsWith('demo-')) {
-        unsubSurat = onSnapshot(collection(firebaseDb, 'disposisi_surat'), (snapshot) => {
-          const items: DisposisiSurat[] = [];
-          snapshot.forEach((docSnap) => {
-            items.push({ id: docSnap.id, ...docSnap.data() } as DisposisiSurat);
-          });
-          if (items.length > 0) {
-            setDisposisiList(items);
-          }
-        }, (err) => {
-          console.warn('Firestore surat listener error:', err);
+      unsubSurat = onSnapshot(collection(firebaseDb, 'disposisi_surat'), (snapshot) => {
+        markConnected();
+        const items: DisposisiSurat[] = [];
+        snapshot.forEach((docSnap) => {
+          items.push({ id: docSnap.id, ...docSnap.data() } as DisposisiSurat);
         });
+        setDisposisiList(items);
+      }, (err) => {
+        console.warn('Firestore surat listener error:', err);
+        setDisposisiList(getLocalDisposisi());
+        if (!hasConnected) {
+          setIsFirebaseActive(false);
+        }
+      });
 
-        unsubPublic = onSnapshot(collection(firebaseDb, 'public_submissions'), (snapshot) => {
-          const items: PublicSuratSubmission[] = [];
-          snapshot.forEach((docSnap) => {
-            items.push({ id: docSnap.id, ...docSnap.data() } as PublicSuratSubmission);
-          });
-          setPublicSubmissionsList(items);
-        }, (err) => {
-          console.warn('Firestore public submissions listener error:', err);
+      unsubPublic = onSnapshot(collection(firebaseDb, 'public_submissions'), (snapshot) => {
+        markConnected();
+        const items: PublicSuratSubmission[] = [];
+        snapshot.forEach((docSnap) => {
+          items.push({ id: docSnap.id, ...docSnap.data() } as PublicSuratSubmission);
         });
-      }
+        setPublicSubmissionsList(items);
+      }, (err) => {
+        console.warn('Firestore public submissions listener error:', err);
+        setPublicSubmissionsList(getLocalPublicSubmissions());
+        if (!hasConnected) {
+          setIsFirebaseActive(false);
+        }
+      });
 
       return () => {
-        unsubUsers();
+        if (unsubUsers) unsubUsers();
         if (unsubSurat) unsubSurat();
         if (unsubPublic) unsubPublic();
       };
     } catch (err) {
       console.warn('Firestore sync error fallback to local database', err);
+      setIsFirebaseActive(false);
+      setDisposisiList(getLocalDisposisi());
+      setPublicSubmissionsList(getLocalPublicSubmissions());
     }
-  }, [firebaseDb, currentUser]);
+  }, [firebaseDb]);
 
   // LOGIN FUNCTION
-  const login = (email: string, pass: string) => {
+  const login = async (email: string, pass: string) => {
     const foundUser = usersList.find((u) => u.email.toLowerCase() === email.toLowerCase());
 
     if (!foundUser) {
@@ -243,9 +256,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (firebaseAuth) {
-      signInWithEmailAndPassword(firebaseAuth, email, pass).catch((err) =>
-        console.warn('Firebase Auth login fallback', err)
-      );
+      try {
+        await signInWithEmailAndPassword(firebaseAuth, email, pass);
+      } catch (err: any) {
+        console.warn('Firebase Auth login error', err);
+        return { success: false, message: 'Gagal masuk: ' + (err.message || 'Kredensial tidak valid') };
+      }
     }
 
     setCurrentUser(foundUser);
@@ -305,32 +321,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(null);
   };
 
-  // DEMO ROLE SWITCHER
-  const switchDemoRole = (role: UserRole, pbtName?: string) => {
-    let target = usersList.find((u) => u.role === role && u.approved);
-    if (!target) {
-      target = {
-        id: `demo-${role}-${Date.now()}`,
-        email: `demo.${role}@psbtph.go.id`,
-        name:
-          role === 'admin'
-            ? 'Koordinator Admin UPT'
-            : role === 'operator'
-            ? 'Operator Surat'
-            : role === 'bendahara'
-            ? 'Bendahara UPT PSBTPH'
-            : pbtName || 'Avianita Agustina, S.TP.',
-        role,
-        approved: true,
-        pbt_name: role === 'pbt' ? pbtName || 'Avianita Agustina, S.TP.' : undefined,
-        createdAt: new Date().toISOString(),
-      };
-    } else if (role === 'pbt' && pbtName) {
-      target = { ...target, pbt_name: pbtName, name: pbtName };
-    }
-    setCurrentUser(target);
-  };
-
   const updateCurrentUser = (data: Partial<UserAccount>) => {
     if (!currentUser) return;
     const updated = { ...currentUser, ...data };
@@ -358,7 +348,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // REGISTER USER FUNCTION
-  const registerUser = (
+  const registerUser = async (
     email: string,
     name: string,
     pass: string,
@@ -384,9 +374,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsersList((prev) => [...prev, newUser]);
 
     if (firebaseAuth) {
-      createUserWithEmailAndPassword(firebaseAuth, email, pass).catch((err) =>
-        console.warn('Firebase Auth create error', err)
-      );
+      try {
+        await createUserWithEmailAndPassword(firebaseAuth, email, pass);
+      } catch (err: any) {
+        console.warn('Firebase Auth create error', err);
+      }
     }
 
     syncUserToFirestore(newUser);
@@ -432,7 +424,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     deleteUserFromFirestore(userId);
   };
 
-  const addDisposisi = (data: Omit<DisposisiSurat, 'id' | 'created_at' | 'updated_at'>) => {
+  const addDisposisi = async (data: Omit<DisposisiSurat, 'id' | 'created_at' | 'updated_at'>) => {
     const now = new Date().toISOString();
     const id = `disp-${Date.now()}`;
     const newDoc: DisposisiSurat = {
@@ -443,20 +435,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setDisposisiList((prev) => [newDoc, ...prev]);
-    syncDisposisiToFirestore(newDoc);
+    
+    try {
+      await syncDisposisiToFirestore(newDoc);
+    } catch (err) {
+      setDisposisiList((prev) => prev.filter((item) => item.id !== id));
+      throw err;
+    }
   };
 
-  const updateDisposisi = (id: string, data: Partial<DisposisiSurat>) => {
+  const updateDisposisi = async (id: string, data: Partial<DisposisiSurat>) => {
     const now = new Date().toISOString();
+    const previousData = disposisiList.find((item) => item.id === id);
+    
     setDisposisiList((prev) =>
       prev.map((item) => (item.id === id ? { ...item, ...data, updated_at: now } : item))
     );
-    updateDisposisiInFirestore(id, { ...data, updated_at: now });
+    
+    try {
+      await updateDisposisiInFirestore(id, { ...data, updated_at: now });
+    } catch (err) {
+      if (previousData) {
+        setDisposisiList((prev) =>
+          prev.map((item) => (item.id === id ? previousData : item))
+        );
+      }
+      throw err;
+    }
   };
 
-  const deleteDisposisi = (id: string) => {
+  const deleteDisposisi = async (id: string) => {
+    const previousData = disposisiList.find((item) => item.id === id);
+    
     setDisposisiList((prev) => prev.filter((item) => item.id !== id));
-    deleteDisposisiFromFirestore(id);
+    
+    try {
+      await deleteDisposisiFromFirestore(id);
+    } catch (err) {
+      if (previousData) {
+        setDisposisiList((prev) => [...prev, previousData]);
+      }
+      throw err;
+    }
   };
 
   const togglePbtStatus = (id: string, newStatus: boolean) => {
@@ -503,18 +523,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       catatan: [],
       link_dokumen: submission.link_dokumen,
       status: false,
-      disposisi_oleh: currentUser?.name,
+      disposisi_oleh: currentUser?.name || 'Avianita Agustina, S.TP.',
       tanggal_disposisi: now.slice(0, 10),
     };
 
-    // addDisposisi syncs to Firestore internally — errors are caught inside syncDisposisiToFirestore
     try {
-      addDisposisi(newDisposisi);
+      await addDisposisi(newDisposisi);
     } catch (err) {
-      console.warn('processPublicSubmission: addDisposisi error (silenced):', err);
+      console.error('processPublicSubmission: addDisposisi failed', err);
+      throw new Error('Gagal memindahkan data ke Rekapitulasi. Pastikan Anda sudah login dan terhubung ke Firebase.');
     }
 
-    // updatePublicSubmissionStatus saves to localStorage + tries Firestore — never throws
     await updatePublicSubmissionStatus(id, 'processed');
   };
 
@@ -554,7 +573,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login,
       loginWithGoogle,
       logout,
-      switchDemoRole,
       registerUser,
       updateCurrentUser,
       updateUser,

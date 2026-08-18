@@ -6,7 +6,6 @@ import {
   UserPlus,
   ShieldCheck,
   UserCheck,
-  Sparkles,
   Eye,
   EyeOff,
   AlertCircle,
@@ -20,7 +19,7 @@ import {
 import logoImage from '../image/Gemini_Generated_Image_txdza3txdza3txdz.jpg';
 
 export const LoginRegister: React.FC = () => {
-  const { login, loginWithGoogle, registerUser, switchDemoRole } = useAuth();
+  const { login, loginWithGoogle, registerUser } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'login' | 'register' | 'surat'>('login');
 
@@ -43,11 +42,11 @@ export const LoginRegister: React.FC = () => {
     null
   );
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
 
-    const res = login(loginEmail, loginPassword);
+    const res = await login(loginEmail, loginPassword);
     if (!res.success) {
       setLoginError(res.message);
     }
@@ -63,7 +62,7 @@ export const LoginRegister: React.FC = () => {
     setIsGoogleLoading(false);
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegMessage(null);
 
@@ -77,7 +76,7 @@ export const LoginRegister: React.FC = () => {
       return;
     }
 
-    const res = registerUser(
+    const res = await registerUser(
       regEmail,
       regName,
       regPassword,
@@ -256,42 +255,6 @@ export const LoginRegister: React.FC = () => {
               </svg>
               <span>{isGoogleLoading ? 'Memproses...' : 'Masuk dengan Akun Google'}</span>
             </button>
-
-            {/* QUICK DEMO LOGIN BUTTONS */}
-            <div className="pt-4 border-t border-slate-800/80 space-y-2.5">
-              <div className="text-[11px] font-semibold text-slate-400 text-center">
-                Atau Quick Login Demo (1-Click):
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => switchDemoRole('admin')}
-                  className="p-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold flex flex-col items-center gap-1.5 transition-all hover:border-emerald-400/50"
-                >
-                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                  <span>Admin</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => switchDemoRole('operator')}
-                  className="p-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-[11px] font-bold flex flex-col items-center gap-1.5 transition-all hover:border-cyan-400/50"
-                >
-                  <UserCheck className="w-5 h-5 text-cyan-400" />
-                  <span>Operator</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => switchDemoRole('pbt', PETUGAS_PBT_LIST[0])}
-                  className="p-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[11px] font-bold flex flex-col items-center gap-1.5 transition-all hover:border-amber-400/50"
-                >
-                  <Sparkles className="w-5 h-5 text-amber-400" />
-                  <span>PBT</span>
-                </button>
-              </div>
-            </div>
           </div>
         )}
 
