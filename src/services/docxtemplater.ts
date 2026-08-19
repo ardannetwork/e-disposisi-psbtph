@@ -171,12 +171,12 @@ export const exportDisposisiToDocx = (disposisi: DisposisiSurat) => {
       linebreaks: true,
     });
 
-    const p1 = disposisi.pic || '…………………………………………….';
+    const p1 = typeof disposisi.pic === 'string' && disposisi.pic.trim() !== '' ? disposisi.pic : '…………………………………………….';
     const p2 = '…………………………………………….';
     const p3 = '…………………………………………….';
     const p4 = '…………………………………………….';
 
-    const catatanList = disposisi.catatan || [];
+    const catatanList = Array.isArray(disposisi.catatan) ? disposisi.catatan : [];
     const hasCatatan = (keyword: string) =>
       catatanList.some((c) => c.toLowerCase().includes(keyword.toLowerCase()));
 
@@ -185,7 +185,7 @@ export const exportDisposisiToDocx = (disposisi: DisposisiSurat) => {
     const chkKoordinasi = hasCatatan('koordinasi') || hasCatatan('konfirmasi') ? '☑' : '☐';
     const chkArsipkan = hasCatatan('arsip') ? '☑' : '☐';
     const chkLain = disposisi.catatan_lain || hasCatatan('lain') ? '☑' : '☐';
-    const catatanLainText = disposisi.catatan_lain ? disposisi.catatan_lain : '……………………………...';
+    const catatanLainText = disposisi.catatan_lain && disposisi.catatan_lain.trim() !== '' ? disposisi.catatan_lain : '……………………………...';
 
     let catatanFormatted = '';
     if (disposisi.catatan_text) {
@@ -209,16 +209,20 @@ export const exportDisposisiToDocx = (disposisi: DisposisiSurat) => {
       }
     }
 
+    const ensureString = (value: unknown, fallback: string) =>
+      typeof value === 'string' && value.trim() !== '' ? value : fallback;
+
     const dots = (len = 30) => '…'.repeat(len);
 
     doc.render({
-      surat_dari: disposisi.surat_dari || dots(30),
-      nomor_surat: disposisi.nomor_surat || dots(30),
-      tanggal_surat: disposisi.tanggal_surat || dots(30),
-      diterima_tanggal: disposisi.diterima_tanggal || dots(30),
-      nomor_agenda: disposisi.nomor_agenda || dots(30),
-      sifat: disposisi.sifat || dots(30),
-      hal: disposisi.hal || dots(30),
+      surat_dari: ensureString(disposisi.surat_dari, dots(30)),
+      nomor_surat: ensureString(disposisi.nomor_surat, dots(30)),
+      tanggal_surat: ensureString(disposisi.tanggal_surat, dots(30)),
+      diterima_tanggal: ensureString(disposisi.diterima_tanggal, dots(30)),
+      nomor_agenda: ensureString(disposisi.nomor_agenda, dots(30)),
+      sifat: ensureString(disposisi.sifat, dots(30)),
+      hal: ensureString(disposisi.hal, dots(30)),
+      petugas: ensureString(disposisi.petugas, dots(30)),
       pic_1: p1,
       pic_2: p2,
       pic_3: p3,
@@ -231,7 +235,7 @@ export const exportDisposisiToDocx = (disposisi: DisposisiSurat) => {
       catatan_lain_text: catatanLainText,
       catatan_text: catatanFormatted,
       disposisi_oleh: namaKoordinator,
-      nip_oleh: disposisi.nip_oleh || 'NIP. 19720809 199903 2 007',
+      nip_oleh: ensureString(disposisi.nip_oleh, 'NIP. 19720809 199903 2 007'),
     });
 
     const out = doc.getZip().generate({

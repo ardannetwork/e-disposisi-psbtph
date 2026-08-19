@@ -9,7 +9,7 @@ import {
   CATATAN_DEFAULT_OPTIONS,
   SIFAT_OPTIONS,
 } from '../types/disposisi';
-import { X, Save, FileText, CheckSquare, Calendar, User, Link as LinkIcon, Upload } from 'lucide-react';
+import { X, Save, FileText, CheckSquare, Calendar, User, Link as LinkIcon, Upload, Camera } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 import imageCompression from 'browser-image-compression';
 import { getDocument } from 'pdfjs-dist';
@@ -53,7 +53,7 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
   const [tanggalDisposisi, setTanggalDisposisi] = useState(
     new Date().toISOString().split('T')[0]
   );
-  const [docInputMode, setDocInputMode] = useState<'url' | 'file'>('url');
+  const [docInputMode, setDocInputMode] = useState<'url' | 'file' | 'camera'>('url');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState('');
   const [isCompressing, setIsCompressing] = useState(false);
@@ -265,14 +265,56 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
     }
   };
 
-  const handleDocModeToggle = (mode: 'url' | 'file') => {
+  const handleCameraChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsCompressing(true);
+    setOriginalSize(file.size);
+
+    try {
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      });
+
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(compressedFile);
+      });
+
+      setCompressedSize(compressedFile.size);
+      setLinkDokumen(base64);
+      setFilePreview(base64);
+      setIsFileTooLarge(compressedFile.size > MAX_FILE_SIZE);
+
+      const response = await fetch(base64);
+      const blob = await response.blob();
+      setSelectedFile(new File([blob], file.name, { type: file.type }));
+    } catch (error) {
+      console.error('Camera capture error:', error);
+      alert('Gagal memproses foto. Coba lagi.');
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
+  const handleDocModeToggle = (mode: 'url' | 'file' | 'camera') => {
     setDocInputMode(mode);
     if (mode === 'url') {
       setSelectedFile(null);
       setFilePreview('');
       setIsFileTooLarge(false);
+    } else if (mode === 'file') {
+      setLinkDokumen('');
+      setIsFileTooLarge(false);
     } else {
       setLinkDokumen('');
+      setSelectedFile(null);
+      setFilePreview('');
       setIsFileTooLarge(false);
     }
   };
@@ -561,6 +603,18 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
                   <Upload className="w-3.5 h-3.5 inline mr-1" />
                   {isFileTooLarge ? 'File Terlalu Besar' : 'Upload File'}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => handleDocModeToggle('camera')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                    docInputMode === 'camera'
+                      ? 'bg-sky-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Camera className="w-3.5 h-3.5 inline mr-1" />
+                  Kamera
+                </button>
               </div>
 
               {/* URL MODE */}
@@ -683,6 +737,120 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
                       type="file"
                       accept=".pdf,image/jpeg,image/png,image/jpg"
                       onChange={handleFileChange}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      disabled={isCompressing}
+                    />
+                  </label>
+                </div>
+              )}
+
+              {/* CAMERA MODE */}
+              {docInputMode === 'camera' && (
+                <div>
+                  <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer hover:bg-slate-800/50 transition-colors relative overflow-hidden ${
+                    isFileTooLarge ? 'border-rose-500 bg-rose-500/10' : 'border-slate-700 hover:border-sky-500'
+                  }`}>
+                     {isCompressing ? (
+                       <div className="flex flex-col items-center justify-center w-full p-4">
+                         <div className="w-full max-w-xs space-y-3">
+                           <div className="flex items-center justify-center gap-3 mb-2">
+                             <div className="relative">
+                               <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-700 border-t-sky-500"></div>
+                               <div className="absolute inset-0 flex items-center justify-center">
+                                 <span className="text-[10px] font-bold text-sky-400">
+                                   {Math.min(Math.round(compressProgress), 100)}%
+                                 </span>
+                               </div>
+                             </div>
+                             <div className="text-left">
+                               <p className="text-xs font-semibold text-slate-200">
+                                 Mengompresi Gambar...
+                               </p>
+                               <p className="text-[10px] text-slate-400">
+                                 {compressProgress < 30 ? 'Membaca foto...' : compressProgress < 70 ? 'Memproses kompresi...' : 'Menyelesaikan...'}
+                               </p>
+                             </div>
+                           </div>
+                           
+                           <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700">
+                             <div
+                               className="bg-gradient-to-r from-sky-600 via-sky-500 to-sky-400 h-2.5 rounded-full transition-all duration-300 ease-out relative"
+                               style={{ width: `${Math.min(compressProgress, 100)}%` }}
+                             >
+                               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+                             </div>
+                           </div>
+                           
+                           <p className="text-[10px] text-slate-500 text-center">
+                             {(originalSize / 1024 / 1024).toFixed(2)} MB → Memproses...
+                           </p>
+                         </div>
+                       </div>
+                     ) : filePreview ? (
+                      <div className="flex items-center gap-3 p-2 w-full">
+                        {filePreview.startsWith('data:image') ? (
+                          <img src={filePreview} alt="Preview" className="w-12 h-12 object-cover rounded-lg border border-slate-700" />
+                        ) : (
+                          <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center">
+                            <FileText className="w-6 h-6 text-slate-300" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-slate-200 truncate">
+                            {selectedFile?.name || 'Foto dari Kamera'}
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            {compressedSize > 0 && originalSize > 0
+                              ? `${(compressedSize / 1024).toFixed(0)} KB (dari ${(originalSize / 1024).toFixed(0)} KB)`
+                              : `${(selectedFile?.size || 0) / 1024 > 1024 
+                                  ? `${((selectedFile?.size || 0) / (1024 * 1024)).toFixed(2)} MB`
+                                  : `${((selectedFile?.size || 0) / 1024).toFixed(0)} KB`
+                                }`
+                            }
+                            {compressedSize > 0 && originalSize > 0 && compressedSize < originalSize && (
+                              <span className="text-emerald-400 ml-1">
+                                (-{((1 - compressedSize / originalSize) * 100).toFixed(0)}%)
+                              </span>
+                            )}
+                            {isFileTooLarge && (
+                              <span className="text-rose-400 ml-1 font-semibold">
+                                (Melebihi batas {MAX_FILE_SIZE / 1024 / 1024}MB)
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setSelectedFile(null);
+                            setFilePreview('');
+                            setLinkDokumen('');
+                            setOriginalSize(0);
+                            setCompressedSize(0);
+                            setIsFileTooLarge(false);
+                          }}
+                          className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Camera className="w-8 h-8 text-slate-500 mb-2" />
+                        <p className="text-xs text-slate-400 font-medium">
+                          Klik untuk mengambil foto dengan kamera
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          JPG, PNG (Maks 2MB, akan dikompres otomatis)
+                        </p>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/jpg"
+                      capture="environment"
+                      onChange={handleCameraChange}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       disabled={isCompressing}
                     />

@@ -7,7 +7,7 @@
 
 ## 📌 Ringkasan Proyek
 
-Aplikasi berbasis web ini dirancang untuk mendigitalisasi proses pengolahan, pengarsipan, dan disposisi surat masuk permohonan pemeriksaan benih di **UPT PSBTPH IV Jawa Timur Wilayah Kerja Malang**. Sistem ini menggantikan lembar disposisi kertas manual dengan alur digital yang efisien, mendukung manajemen peran berbasis hak akses (*Role-Based Access Control*), pencetakan otomatis lembar disposisi `.docx` (*Mail Merge*), serta dapat berjalan dalam mode **Demo Local Storage** maupun terhubung ke ekosistem **Firebase (Authentication & Cloud Firestore)**.
+Aplikasi berbasis web ini dirancang untuk mendigitalisasi proses pengolahan, pengarsipan, dan disposisi surat masuk permohonan pemeriksaan benih di **UPT PSBTPH IV Jawa Timur Wilayah Kerja Malang**. Sistem ini menggantikan lembar disposisi kertas manual dengan alur digital yang efisien, mendukung manajemen peran berbasis hak akses (*Role-Based Access Control*), pencetakan otomatis lembar disposisi `.docx` (*Mail Merge*), serta terhubung ke ekosistem **Firebase (Authentication & Cloud Firestore)**. Aplikasi menggunakan Cloud Firestore sebagai sumber data utama dengan fallback LocalStorage jika Firebase tidak dikonfigurasi.
 
 ---
 
@@ -18,7 +18,7 @@ Aplikasi berbasis web ini dirancang untuk mendigitalisasi proses pengolahan, pen
 | **Frontend Framework** | React 18 + Vite (TypeScript) | Single Page Application (SPA) responsif & cepat |
 | **Styling & UI** | Tailwind CSS + Lucide Icons | Palette warna resmi hijau UPT PSBTPH, Glassmorphism, Dark/Light Theme toggle |
 | **Document Generation** | `docxtemplater` + `pizzip` + `file-saver` | Generator dokumen `.docx` instansi otomatis via Mail Merge |
-| **Database & Engine** | Cloud Firestore + LocalStorage Fallback | Dual-Engine (Demo Local + Live Firebase Sync) |
+| **Database & Engine** | Cloud Firestore + LocalStorage Fallback | Firestore sebagai sumber data utama, LocalStorage hanya fallback |
 | **Authentication** | Firebase Auth + Internal Role Engine | Login email/password dengan mekanisme Admin Approval |
 
 ---
@@ -40,8 +40,6 @@ e-disposisi-psbtph/
     ├── index.css                   # Global styling & custom scrollbar
     ├── types/
     │   └── disposisi.ts            # Interface TypeScript, enum Hal, PBT, & Catatan
-    ├── data/
-    │   └── mockData.ts             # Initial mock data pengguna & disposisi surat
     ├── services/
     │   ├── firebase.ts             # SDK Firebase initialization & config saver
     │   ├── db.ts                   # Firestore & LocalStorage CRUD + public submissions
@@ -67,7 +65,7 @@ e-disposisi-psbtph/
 
 ## 🗄️ Desain Basis Data (Cloud Firestore)
 
-Sistem menggunakan 3 koleksi utama di Cloud Firestore (atau LocalStorage pada mode Demo):
+Sistem menggunakan 3 koleksi utama di Cloud Firestore:
 
 ### 1. Koleksi Utama: `disposisi_surat`
 | Nama Field | Tipe Data | Keterangan & Validasi |
@@ -161,37 +159,41 @@ Sistem menggunakan 3 koleksi utama di Cloud Firestore (atau LocalStorage pada mo
 ### 1. Role: PBT (Pengawas Benih Tanaman)
 * **Hak Akses:**
   * Login ke sistem dengan email & password.
+  * Proses login mengawait autentikasi Firebase Auth untuk memastikan sesi valid sebelum mengakses data.
   * Melihat data surat/disposisi yang **secara khusus ditugaskan kepada namanya** (`petugas == currentUser.pbt_name`).
   * **Interaktif Status:** Bebas mencentang/mengubah status penyelesaian tugas (`status: true/false`).
   * **Restriksi:** Tidak dapat mengubah data utama surat atau menghapus berkas.
 
 ### 2. Role: Operator Surat
- * **Hak Akses:**
-    * Login ke sistem dengan email & password.
-    * Menginput data surat masuk baru (`surat_dari`, `nomor_surat`, `tanggal_surat`, `diterima_tanggal`, `nomor_agenda`, `sifat`, `hal`, `link_dokumen`).
-    * Melihat rekapitulasi seluruh data surat.
-    * Mengedit data surat sebelum diproses lebih lanjut oleh Admin.
-    * Mendownload lembar disposisi `.docx` siap cetak.
-    * **Review Permohonan Publik:** Meninjau daftar permohonan surat dari publik (tanpa login) di halaman **"Permohonan Publik"** dan mengubah status menjadi `processed` atau `rejected`.
-    * **Konfirmasi Hapus:** Dialog konfirmasi custom sebelum menghapus data surat.
+  * **Hak Akses:**
+      * Login ke sistem dengan email & password.
+      * Proses login mengawait autentikasi Firebase Auth untuk memastikan sesi valid sebelum mengakses data.
+      * Menginput data surat masuk baru (`surat_dari`, `nomor_surat`, `tanggal_surat`, `diterima_tanggal`, `nomor_agenda`, `sifat`, `hal`, `link_dokumen`).
+      * Melihat rekapitulasi seluruh data surat.
+      * Mengedit data surat sebelum diproses lebih lanjut oleh Admin.
+      * Mendownload lembar disposisi `.docx` siap cetak.
+      * **Review Permohonan Publik:** Meninjau daftar permohonan surat dari publik (tanpa login) di halaman **"Permohonan Publik"** dan mengubah status menjadi `processed` atau `rejected`.
+      * **Konfirmasi Hapus:** Dialog konfirmasi custom sebelum menghapus data surat.
 
 ### 3. Role: Admin (Koordinator UPT PSBTPH Malang)
- * **Hak Akses:**
-    * Akses penuh ke seluruh fitur dan data sistem.
-    * **Manajemen & Approval User:** Menyetujui registrasi pengguna baru, memilih role (`admin`, `operator`, `pbt`, `bendahara`), menetapkan pemetaan nama PBT, serta **menghapus akun pengguna aktif**.
-    * **Proses Disposisi:** Menentukan petugas PBT (`petugas`), mencentang instruksi disposisi (`catatan`), mengisi catatan manual, dan menetapkan tanggal disposisi.
-    * Mengedit, menghapus, serta mendownload dokumen disposisi `.docx`.
-    * **Review Permohonan Publik:** Sama seperti Operator, Admin juga dapat meninjau dan mengubah status permohonan surat publik menjadi `processed` atau `rejected`.
-    * **Konfirmasi Hapus:** Dialog konfirmasi custom sebelum menghapus data surat.
-    * **Konfirmasi Logout:** Dialog konfirmasi sebelum keluar dari sistem.
+  * **Hak Akses:**
+      * Akses penuh ke seluruh fitur dan data sistem.
+      * Login mengawait Firebase Auth, memastikan sesi admin valid sebelum menjalankan akses penuh.
+      * **Manajemen & Approval User:** Menyetujui registrasi pengguna baru, memilih role (`admin`, `operator`, `pbt`, `bendahara`), menetapkan pemetaan nama PBT, serta **menghapus akun pengguna aktif**.
+      * **Proses Disposisi:** Menentukan petugas PBT (`petugas`), mencentang instruksi disposisi (`catatan`), mengisi catatan manual, dan menetapkan tanggal disposisi.
+      * Mengedit, menghapus, serta mendownload dokumen disposisi `.docx`.
+      * **Review Permohonan Publik:** Sama seperti Operator, Admin juga dapat meninjau dan mengubah status permohonan surat publik menjadi `processed` atau `rejected`.
+      * **Konfirmasi Hapus:** Dialog konfirmasi custom sebelum menghapus data surat.
+      * **Konfirmasi Logout:** Dialog konfirmasi sebelum keluar dari sistem.
 
 ### 4. Role: Bendahara (Pengelola Keuangan)
-* **Hak Akses:**
-  * Login ke sistem dengan email & password.
-  * Mengakses halaman **Pembayaran** dari sidebar navigasi.
-  * Melihat daftar seluruh surat disposisi dengan status pembayaran.
-  * **Mengedit field `pembayaran`** pada setiap surat disposisi (misal: `Belum Dibayar`, `DP 50%`, `Lunas`, `Dicicil`, `Dibatalkan`).
-  * **Restriksi:** Tidak dapat mengubah data utama surat, menghapus surat, atau mengakses fitur manajemen user.
+  * **Hak Akses:**
+    * Login ke sistem dengan email & password.
+    * Proses login mengawait autentikasi Firebase Auth untuk memastikan sesi valid.
+    * Mengakses halaman **Pembayaran** dari sidebar navigasi.
+    * Melihat daftar seluruh surat disposisi dengan status pembayaran.
+    * **Mengedit field `pembayaran`** pada setiap surat disposisi (misal: `Belum Dibayar`, `DP 50%`, `Lunas`, `Dicicil`, `Dibatalkan`).
+    * **Restriksi:** Tidak dapat mengubah data utama surat, menghapus surat, atau mengakses fitur manajemen user.
 
 ---
 
@@ -216,15 +218,19 @@ Aplikasi telah dioptimalkan untuk perangkat mobile dengan layout yang adaptif:
 
 ## 🔽 Dropdown Role Switcher (Navbar)
 
-Dropdown simulasi switch role di navbar telah diperbaiki untuk memastikan tampilannya tidak tertutup atau terpotong oleh elemen lain.
+Dropdown simulasi switch role di navbar telah **dihapus** untuk memastikan aplikasi hanya berjalan dalam mode Firebase Live. Semua akses data kini bergantung pada autentikasi Firebase Auth yang valid.
 
-### Perbaikan yang Diterapkan:
-- **Z-index stacking**: header navbar dinaikkan ke `z-[60]` dan dropdown role ke `z-[70]` agar muncul di atas sidebar (`z-50`) dan konten utama
-- **Overflow handling**: mengganti `overflow-hidden` menjadi `overflow-x-hidden` pada header agar dropdown yang `absolute` tidak terpotong secara vertikal
-- **Klik-luar untuk menutup**: menambahkan listener `mousedown` menggunakan `useRef` dan `useEffect` sehingga dropdown otomatis tertutup saat pengguna mengklik area di luar dropdown
+### Perubahan yang Diterapkan:
+- Menghapus tombol **Quick Login Demo** dari halaman login
+- Menghapus dropdown **Simulasi Switch Role (Demo)** dari navbar
+- Menghapus file `src/data/mockData.ts` yang berisi data dummy
+- Aplikasi kini hanya memuat data dari Cloud Firestore atau LocalStorage fallback jika Firebase tidak aktif
 
-### Lokasi File:
-- [`src/components/Navbar.tsx`](src/components/Navbar.tsx) — baris 78 (header) dan baris 128-283 (dropdown role switcher)
+### Lokasi File yang Berubah:
+- [`src/components/Navbar.tsx`](src/components/Navbar.tsx) — menghapus dropdown role switcher
+- [`src/components/LoginRegister.tsx`](src/components/LoginRegister.tsx) — menghapus tombol Quick Login Demo
+- [`src/context/AuthContext.tsx`](src/context/AuthContext.tsx) — menghapus fungsi `switchDemoRole` dan import mock data
+- [`src/data/mockData.ts`](src/data/mockData.ts) — **file dihapus**
 
 ---
 
@@ -324,6 +330,26 @@ Saat tombol **`.docx`** diklik pada baris tabel:
 
 ---
 
+## 🔄 Strategi Pemuatan Data (Firestore-First)
+
+Aplikasi kini menerapkan pendekatan **Firestore sebagai sumber data utama (Source of Truth)**. Berikut adalah alur pemuatan data yang baru:
+
+### Alur Startup Aplikasi:
+1. **Initial State**: Semua state data (`usersList`, `disposisiList`, `publicSubmissionsList`) dimulai sebagai array kosong `[]`
+2. **Firestore Listener**: `onSnapshot` didaftarkan untuk ketiga koleksi (`users`, `disposisi_surat`, `public_submissions`) segera setelah aplikasi dimulai
+3. **Data Real-time**: Setiap perubahan di Firestore langsung diperbarui di UI secara real-time
+4. **Status Koneksi**: `isFirebaseActive` diatur menjadi `true` hanya setelah listener Firestore berhasil menerima snapshot pertama
+
+### Fallback ke LocalStorage:
+- **Hanya jika** Firebase tidak dikonfigurasi (`firebaseDb === null`) atau listener gagal menerima data
+- Aplikasi akan memuat data dari `localStorage` dan menampilkan indikator **"Demo Local"** di navbar
+- Semua operasi tulis (create/update/delete) di mode ini hanya menyimpan ke LocalStorage
+
+### Penanganan Error Firestore:
+- Jika operasi tulis ke Firestore gagal (error koneksi, izin ditolak, dll), state lokal akan di-**rollback** ke data sebelumnya
+- User akan melihat alert dengan pesan error yang jelas
+- Data tetap aman di Firestore jika operasi sebelumnya berhasil
+
 ## ⚡ Panduan Menjalankan untuk AI Agent / Developer Selanjutnya
 
 ### 1. Menjalankan Server Pengembangan (Dev Server):
@@ -345,11 +371,10 @@ Hasil build produksi akan tersimpan secara otomatis di folder `dist/`.
 - 🌱 **PBT**: `prima.candra@psbtph.go.id` | Password: `pbt`
 - 💰 **Bendahara**: `bendahara.malang@psbtph.go.id` | Password: `bendahara`
 
-### 4. Akun Demo (Quick Login):
-Sistem menyediakan tombol **Quick Login Demo (1-Click)** di halaman login untuk menguji berbagai role tanpa perlu memasukkan kredensial:
-- **Admin**: klik tombol "Admin" untuk login sebagai Koordinator Admin UPT
-- **Operator**: klik tombol "Operator" untuk login sebagai Operator Surat
-- **PBT**: klik tombol "PBT" untuk login sebagai Petugas Pengawas Benih Tanaman
+### 4. Catatan Penting untuk Developer:
+- Semua fungsi CRUD (`addDisposisi`, `updateDisposisi`, `deleteDisposisi`, `login`, `registerUser`) kini **async** dan meng-await sinkronisasi ke Firestore
+- Pastikan Firebase sudah dikonfigurasi dengan benar melalui **Firebase Config Modal** sebelum menguji fitur input data
+- Jika Firestore belum aktif, data hanya akan disimpan di LocalStorage dan tidak akan tersinkronisasi ke Cloud
 
 ---
 *Dokumentasi ini dibuat otomatis oleh AI Assistant Antigravity untuk UPT PSBTPH IV Jawa Timur Wilayah Kerja Malang.*
