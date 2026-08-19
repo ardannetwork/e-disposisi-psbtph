@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PDFDocument } from 'pdf-lib';
 import imageCompression from 'browser-image-compression';
 import { X, Save, FileText, Link as LinkIcon, Upload, Camera } from 'lucide-react';
-import { HAL_SERTIFIKASI, HAL_WASAR, HalType } from '../types/disposisi';
+import { PUBLIC_HAL_OPTIONS } from '../types/disposisi';
 import { addPublicSubmission, uploadFileToStorage } from '../services/db';
 import { firebaseDb } from '../services/firebase';
 
@@ -20,8 +20,8 @@ const generateCaptcha = () => {
 
 export const PublicSuratForm: React.FC = () => {
   const [suratDari, setSuratDari] = useState('');
-  const [halType, setHalType] = useState<HalType>('Sertifikasi');
-  const [hal, setHal] = useState<string>(HAL_SERTIFIKASI[0]);
+  const [hal, setHal] = useState<string>(PUBLIC_HAL_OPTIONS[0]);
+  const [halLainnya, setHalLainnya] = useState('');
   const [kabupaten, setKabupaten] = useState<string>('');
   const [linkDokumen, setLinkDokumen] = useState('');
   const [docInputMode, setDocInputMode] = useState<'url' | 'file' | 'camera'>('url');
@@ -48,6 +48,21 @@ export const PublicSuratForm: React.FC = () => {
     }
     return 0;
   });
+
+  const getFinalHal = () => {
+    if (hal === 'Lainnya' && halLainnya.trim()) {
+      return halLainnya.trim();
+    }
+    return hal;
+  };
+
+  const getHalType = (finalHal: string): 'Sertifikasi' | 'Wasar' => {
+    const wasarKeywords = ['Penilaian Ulang', 'Pendaftaran Sertifikat Rekomendasi', 'Kompetensi Produsen'];
+    if (wasarKeywords.some((keyword) => finalHal.includes(keyword))) {
+      return 'Wasar';
+    }
+    return 'Sertifikasi';
+  };
 
   const isFirebaseActive = !!firebaseDb;
 
@@ -178,10 +193,13 @@ export const PublicSuratForm: React.FC = () => {
         });
       }
 
+      const finalHal = getFinalHal();
+      const finalHalType = getHalType(finalHal);
+
       await addPublicSubmission({
         surat_dari: suratDari,
-        hal_type: halType,
-        hal: hal,
+        hal_type: finalHalType,
+        hal: finalHal,
         kabupaten: kabupaten,
         link_dokumen: finalLinkDokumen,
         status: 'pending',
@@ -199,8 +217,8 @@ export const PublicSuratForm: React.FC = () => {
 
   const handleReset = () => {
     setSuratDari('');
-    setHalType('Sertifikasi');
-    setHal(HAL_SERTIFIKASI[0]);
+    setHal(PUBLIC_HAL_OPTIONS[0]);
+    setHalLainnya('');
     setKabupaten('');
     setLinkDokumen('');
     setDocInputMode('url');
@@ -216,7 +234,6 @@ export const PublicSuratForm: React.FC = () => {
     setCaptchaAnswer('');
     setSubmitSuccess(false);
     setSubmitError('');
-    // Hapus rate limit agar user dapat mengirim permohonan baru
     localStorage.removeItem(RATE_LIMIT_KEY);
     setRateLimitTimeLeft(0);
   };
@@ -278,7 +295,7 @@ export const PublicSuratForm: React.FC = () => {
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Surat Dari (Asal Instansi/Pemohon) <span className="text-rose-400">*</span>
+                Surat Dari (Pemohon) <span className="text-rose-400">*</span>
               </label>
               <input
                 type="text"
@@ -294,39 +311,27 @@ export const PublicSuratForm: React.FC = () => {
               <label className="block text-xs font-semibold text-slate-300 mb-1">
                 Kategori Perihal <span className="text-rose-400">*</span>
               </label>
-              <div className="flex rounded-xl bg-slate-800 p-1 border border-slate-700 mb-3">
-                <button
-                  type="button"
-                  onClick={() => { setHalType('Sertifikasi'); setHal(HAL_SERTIFIKASI[0]); }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                    halType === 'Sertifikasi'
-                      ? 'bg-emerald-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  A. Sertifikasi Benih
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setHalType('Wasar'); setHal(HAL_WASAR[0]); }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                    halType === 'Wasar'
-                      ? 'bg-amber-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  B. Wasar (Pengawasan Pemasaran)
-                </button>
-              </div>
               <select
                 value={hal}
                 onChange={(e) => setHal(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
               >
-                {(halType === 'Sertifikasi' ? HAL_SERTIFIKASI : HAL_WASAR).map((item) => (
+                {PUBLIC_HAL_OPTIONS.map((item) => (
                   <option key={item} value={item}>{item}</option>
                 ))}
               </select>
+
+              {hal === 'Lainnya' && (
+                <div className="mt-2">
+                  <input
+                    type="text"
+                    placeholder="Mohon jelaskan perihal lainnya..."
+                    value={halLainnya}
+                    onChange={(e) => setHalLainnya(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              )}
             </div>
 
             <div>

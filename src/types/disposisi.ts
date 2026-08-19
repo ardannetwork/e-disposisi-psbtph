@@ -67,6 +67,15 @@ export const HAL_WASAR = [
   'Penilaian Produsen Ulang',
 ] as const;
 
+export const PUBLIC_HAL_OPTIONS = [
+  'Pemeriksaan Lapang',
+  'PCB Sertifikasi Benih',
+  'PCB Label Ulang',
+  'Pendaftaran Sertifikat Rekomendasi/ Kompetensi Produsen & Pengedar',
+  'Penilaian Ulang Produsen/Pengedar',
+  'Lainnya',
+] as const;
+
 export const PETUGAS_PBT_LIST = [
   'Prima S. Welli Candra, A.Md.',
   'Shofiana Widiningtyas',
@@ -76,6 +85,11 @@ export const PETUGAS_PBT_LIST = [
   'Nedya P. Bachtiar, S.P.',
   'Nanang Budi Astanto',
   'Budi Winarto',
+  'M. Syaifudin Malik',
+  'Ade Irma Safitri S.P.',
+  'Dinar Budi Kerina S.P',
+  'Puspita Dewi Hidayaningtyas S.P.',
+
 ] as const;
 
 export const CATATAN_DEFAULT_OPTIONS = [

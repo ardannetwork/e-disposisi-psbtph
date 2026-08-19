@@ -17,7 +17,7 @@ Aplikasi berbasis web ini dirancang untuk mendigitalisasi proses pengolahan, pen
 | :--- | :--- | :--- |
 | **Frontend Framework** | React 18 + Vite (TypeScript) | Single Page Application (SPA) responsif & cepat |
 | **Styling & UI** | Tailwind CSS + Lucide Icons | Palette warna resmi hijau UPT PSBTPH, Glassmorphism, Dark/Light Theme toggle |
-| **Document Generation** | `docxtemplater` + `pizzip` + `file-saver` | Generator dokumen `.docx` instansi otomatis via Mail Merge |
+| **Document Generation** | `docxtemplater` + `pizzip` + `file-saver` | Generator dokumen `.docx` produsen otomatis via Mail Merge |
 | **Database & Engine** | Cloud Firestore + LocalStorage Fallback | Firestore sebagai sumber data utama, LocalStorage hanya fallback |
 | **Authentication** | Firebase Auth + Internal Role Engine | Login email/password dengan mekanisme Admin Approval |
 
@@ -71,7 +71,7 @@ Sistem menggunakan 3 koleksi utama di Cloud Firestore:
 | Nama Field | Tipe Data | Keterangan & Validasi |
 | :--- | :--- | :--- |
 | `id` | String | Unique ID dokumen (misal: `disp-1722849200`) |
-| `surat_dari` | String | Asal instansi / kelompok tani / produsen pemohon |
+| `surat_dari` | String | Asal Produsen / kelompok tani / produsen pemohon |
 | `nomor_surat` | String | Nomor surat permohonan resmi pemohon |
 | `tanggal_surat` | String (Date) | Tanggal terbit surat pemohon (`YYYY-MM-DD`) |
 | `diterima_tanggal` | String (Date) | Tanggal surat diterima di kantor UPT Malang |
@@ -94,19 +94,14 @@ Sistem menggunakan 3 koleksi utama di Cloud Firestore:
 | `created_at` | String (Timestamp) | Tanggal & waktu data dibuat |
 | `updated_at` | String (Timestamp) | Tanggal & waktu data terakhir diperbarui |
 
-#### A. Rincian Pilihan Dropdown `hal`:
-* **Kategori A. Sertifikasi Benih:**
-  1. *Pemeriksaan Pendahuluan*
-  2. *Pemeriksaan Fase Vegetatif*
-  3. *Pemeriksaan Fase Berbunga*
-  4. *Pemeriksaan Fase Masak*
-  5. *Pemeriksaan Umbi*
-  6. *Pengambilan Contoh Benih*
-  7. *Pemeriksaan Siap Salur*
-* **Kategori B. Wasar (Pengawasan Pemasaran):**
-  1. *PCB LU*
-  2. *Penilaian Produsen Pengedar Baru*
-  3. *Penilaian Produsen Ulang*
+#### A. Dropdown Kategori Perihal `hal`:
+Form input surat kini menggunakan dropdown kategori perihal yang disederhanakan:
+- Pemeriksaan Lapang
+- PCB Sertifikasi Benih
+- PCB Label Ulang
+- Pendaftaran Sertifikat Rekomendasi/ Kompetensi Produsen & Pengedar
+- Penilaian Ulang Produsen/Pengedar
+- Lainnya *(jika dipilih, memunculkan kolom input teks manual untuk perihal custom)*
 
 #### B. Daftar 8 Petugas PBT Aktif (`petugas`):
 1. *Prima S. Welli Candra, A.Md.*
@@ -143,7 +138,7 @@ Sistem menggunakan 3 koleksi utama di Cloud Firestore:
 | Nama Field | Tipe Data | Keterangan & Validasi |
 | :--- | :--- | :--- |
 | `id` | String | Unique ID dokumen (misal: `PUB-1722849200-x7y8z9`) |
-| `surat_dari` | String | Asal instansi / kelompok tani / produsen pemohon |
+| `surat_dari` | String | Asal Produsen / kelompok tani / produsen pemohon |
 | `hal_type` | String | Jenis perihal: `Sertifikasi` atau `Wasar` |
 | `hal` | String | Rincian kategori perihal (Dropdown Pilihan) |
 | `kabupaten` | String | Kabupaten asal permohonan publik |
@@ -239,20 +234,43 @@ Dropdown simulasi switch role di navbar telah **dihapus** untuk memastikan aplik
 Aplikasi menyediakan form permohonan surat khusus untuk publik yang dapat diakses **tanpa perlu login atau membuat akun**. Form ini tersedia melalui tombol **"Permohonan Surat"** pada halaman login.
 
 ### Alur Permohonan Publik:
-1. Pengunjung membuka halaman login aplikasi
-2. Klik tab **"Permohonan Surat"** pada tab switcher
-3. Pilih kategori perihal: **Sertifikasi Benih** atau **Wasar (Pengawasan Pemasaran)**
-4. Isi data: nama instansi/pemohon (`surat_dari`), pilih jenis perihal (`hal`), dan lampirkan dokumen PDF via URL Google Drive atau upload file
-5. File yang diupload akan dikompres otomatis (maks 2MB) untuk mengoptimalkan ukuran
-6. Verifikasi keamanan: jawab captcha aritmatika sederhana
-7. Setelah 3 detik (timer keamanan), form dapat dikirim
-8. Data disimpan ke koleksi Firestore `public_submissions` dengan **status `pending`**
+ 1. Pengunjung membuka halaman login aplikasi
+ 2. Klik tab **"Permohonan Surat"** pada tab switcher
+ 3. Pilih kategori perihal dari dropdown: **Pemeriksaan Lapang**, **PCB Sertifikasi Benih**, **PCB Label Ulang**, **Pendaftaran Sertifikat Rekomendasi/ Kompetensi Produsen & Pengedar**, **Penilaian Ulang Produsen/Pengedar**, atau **Lainnya**
+ 4. Jika memilih **Lainnya**, isi deskripsi perihal di kolom teks yang muncul
+ 5. Isi data: nama instansi/pemohon (`surat_dari`), kabupaten, dan lampirkan dokumen PDF via URL Google Drive, upload file, atau kamera
+ 6. File yang diupload akan dikompres otomatis (maks 2MB) untuk mengoptimalkan ukuran
+ 7. Verifikasi keamanan: jawab captcha aritmatika sederhana
+ 8. Setelah 3 detik (timer keamanan), form dapat dikirim
+ 9. Data disimpan ke koleksi Firestore `public_submissions` dengan **status `pending`**
 
 ### Fitur Keamanan Form Publik:
-- **Honeypot field**: kolom tersembunyi untuk deteksi bot
-- **Rate limiting**: batas 1 permohonan per 5 menit per browser (localStorage)
-- **Captcha aritmatika**: verifikasi sederhana untuk mencegah spam
-- **Timer minimum**: form tidak dapat dikirim sebelum 3 detik
+ - **Honeypot field**: kolom tersembunyi untuk deteksi bot
+ - **Rate limiting**: batas 1 permohonan per 5 menit per browser (localStorage)
+ - **Captcha aritmatika**: verifikasi sederhana untuk mencegah spam
+ - **Timer minimum**: form tidak dapat dikirim sebelum 3 detik
+
+ ---
+
+## 📸 Upload Dokumen via Kamera
+
+Form input surat dan form permohonan publik mendukung upload dokumen melalui kamera perangkat seluler.
+
+### Opsi Input Dokumen:
+- **Link URL** — memasukkan link Google Drive/URL dokumen
+- **Upload File** — memilih file PDF/gambar dari perangkat
+- **Kamera** — mengambil foto langsung dari kamera perangkat
+
+### Detail Fitur Kamera:
+- Menggunakan input `capture="environment"` untuk mengaktifkan kamera belakang pada perangkat mobile
+- Hasil foto otomatis dikompres menggunakan `browser-image-compression` (maks 1MB, lebar/tinggi maks 1920px)
+- Preview foto ditampilkan sebelum submit
+- Mendukung format JPG dan PNG
+- File yang terlalu besar akan ditolak dengan peringatan
+
+### Lokasi Implementasi:
+- [`src/components/SuratFormModal.tsx`](src/components/SuratFormModal.tsx) — tombol Kamera di modal input surat
+- [`src/components/PublicSuratForm.tsx`](src/components/PublicSuratForm.tsx) — tombol Kamera di form permohonan publik
 
 ---
 
@@ -320,12 +338,13 @@ filteredData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
 ## 🖨️ Fitur Mail Merge (Ekspor Dokumen `.docx`)
 
-File service [`src/services/docxtemplater.ts`](src/services/docxtemplater.ts) memuat template XML dokumen Microsoft Word instansi. 
+File service [`src/services/docxtemplater.ts`](src/services/docxtemplater.ts) memuat template XML dokumen Microsoft Word produsen. 
 
 Saat tombol **`.docx`** diklik pada baris tabel:
 1. Data dokumen diambil dari Firestore/LocalStorage.
-2. `Docxtemplater` memetakan placeholder: `{surat_dari}`, `{nomor_surat}`, `{tanggal_surat}`, `{diterima_tanggal}`, `{nomor_agenda}`, `{sifat}`, `{hal}`, `{petugas}`, `{catatan_text}`, `{tanggal_disposisi}`, `{disposisi_oleh}`.
-3. Menghasilkan file `.docx` siap cetak dengan nama file otomatis:  
+2. `Docxtemplater` memetakan placeholder: `{surat_dari}`, `{nomor_surat}`, `{tanggal_surat}`, `{diterima_tanggal}`, `{nomor_agenda}`, `{sifat}`, `{hal}`, `{petugas}`, `{pic_1}`, `{catatan_text}`, `{tanggal_disposisi}`, `{disposisi_oleh}`.
+3. Semua nilai divalidasi sebelum masuk template untuk mencegah `undefined` atau `null` muncul di dokumen.
+4. Menghasilkan file `.docx` siap cetak dengan nama file otomatis:  
    `Disposisi_[NoAgenda]_[NamaPBT].docx`.
 
 ---
@@ -365,7 +384,7 @@ npm run build
 ```
 Hasil build produksi akan tersimpan secara otomatis di folder `dist/`.
 
-### 3. Kredensial Akun Bawaan (Default Demo Credentials):
+### 3. Kredensial Akun Bawaan (Default Credentials):
 - 🛡️ **Admin Koordinator**: `admin.malang@psbtph.go.id` | Password: `admin`
 - 📋 **Operator Surat**: `operator.malang@psbtph.go.id` | Password: `operator`
 - 🌱 **PBT**: `prima.candra@psbtph.go.id` | Password: `pbt`
@@ -373,6 +392,8 @@ Hasil build produksi akan tersimpan secara otomatis di folder `dist/`.
 
 ### 4. Catatan Penting untuk Developer:
 - Semua fungsi CRUD (`addDisposisi`, `updateDisposisi`, `deleteDisposisi`, `login`, `registerUser`) kini **async** dan meng-await sinkronisasi ke Firestore
+- Jika operasi Firestore gagal, state lokal akan di-**rollback** ke data sebelumnya dan user melihat alert error
+- Fitur kamera memerlukan HTTPS atau localhost untuk mengakses kamera perangkat
 - Pastikan Firebase sudah dikonfigurasi dengan benar melalui **Firebase Config Modal** sebelum menguji fitur input data
 - Jika Firestore belum aktif, data hanya akan disimpan di LocalStorage dan tidak akan tersinkronisasi ke Cloud
 

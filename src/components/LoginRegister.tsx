@@ -300,7 +300,7 @@ export const LoginRegister: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Email Instansi</label>
+                <label className="block text-slate-300 font-semibold mb-1">Email Produsen</label>
                 <div className="relative">
                   <input
                     type="email"

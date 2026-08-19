@@ -3,8 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   DisposisiSurat,
   HalType,
-  HAL_SERTIFIKASI,
-  HAL_WASAR,
+  PUBLIC_HAL_OPTIONS,
   PETUGAS_PBT_LIST,
   CATATAN_DEFAULT_OPTIONS,
   SIFAT_OPTIONS,
@@ -40,8 +39,8 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
   const [diterimaTanggal, setDiterimaTanggal] = useState('');
   const [nomorAgenda, setNomorAgenda] = useState('');
   const [sifat, setSifat] = useState<string>('Penting');
-  const [halType, setHalType] = useState<HalType>('Sertifikasi');
-  const [hal, setHal] = useState<string>(HAL_SERTIFIKASI[0]);
+  const [hal, setHal] = useState<string>(PUBLIC_HAL_OPTIONS[0]);
+  const [halLainnya, setHalLainnya] = useState('');
   const [pic, setPic] = useState<string>(PETUGAS_PBT_LIST[0]);
   const [petugas, setPetugas] = useState<string>(PETUGAS_PBT_LIST[0]);
   const [kabupaten, setKabupaten] = useState<string>('');
@@ -90,8 +89,8 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
       setDiterimaTanggal(initialData.diterima_tanggal || '');
       setNomorAgenda(initialData.nomor_agenda || '');
       setSifat(initialData.sifat || 'Penting');
-      setHalType(initialData.hal_type || 'Sertifikasi');
-      setHal(initialData.hal || HAL_SERTIFIKASI[0]);
+      setHal(initialData.hal || PUBLIC_HAL_OPTIONS[0]);
+      setHalLainnya('');
       setPetugas(initialData.petugas || PETUGAS_PBT_LIST[0]);
       setPic(initialData.pic || PETUGAS_PBT_LIST[0]);
       setKabupaten(initialData.kabupaten || '');
@@ -115,8 +114,8 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
       setTanggalSurat(new Date().toISOString().split('T')[0]);
       setDiterimaTanggal(new Date().toISOString().split('T')[0]);
       setSifat('Penting');
-      setHalType('Sertifikasi');
-      setHal(HAL_SERTIFIKASI[0]);
+      setHal(PUBLIC_HAL_OPTIONS[0]);
+      setHalLainnya('');
       setPetugas(PETUGAS_PBT_LIST[0]);
       setPic(PETUGAS_PBT_LIST[0]);
       setKabupaten('');
@@ -134,10 +133,19 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
     }
   }, [initialData, isOpen]);
 
-  // Handle Category type change
-  const handleHalTypeChange = (type: HalType) => {
-    setHalType(type);
-    setHal(type === 'Sertifikasi' ? HAL_SERTIFIKASI[0] : HAL_WASAR[0]);
+  const getFinalHal = () => {
+    if (hal === 'Lainnya' && halLainnya.trim()) {
+      return halLainnya.trim();
+    }
+    return hal;
+  };
+
+  const getHalType = (finalHal: string): HalType => {
+    const wasarKeywords = ['Penilaian Ulang', 'Pendaftaran Sertifikat Rekomendasi', 'Kompetensi Produsen'];
+    if (wasarKeywords.some((keyword) => finalHal.includes(keyword))) {
+      return 'Wasar';
+    }
+    return 'Sertifikasi';
   };
 
   const compressPdf = async (file: File): Promise<{ base64: string; size: number }> => {
@@ -341,6 +349,9 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
       return;
     }
 
+    const finalHal = getFinalHal();
+    const finalHalType = getHalType(finalHal);
+
     const payload = {
       surat_dari: suratDari,
       nomor_surat: nomorSurat,
@@ -348,8 +359,8 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
       diterima_tanggal: diterimaTanggal,
       nomor_agenda: nomorAgenda,
       sifat,
-      hal,
-      hal_type: halType,
+      hal: finalHal,
+      hal_type: finalHalType,
       petugas: isAdmin || mode === 'disposisi' ? petugas : initialData?.petugas || '',
       pic: isAdmin || mode === 'disposisi' ? pic : initialData?.pic || '',
       kabupaten: kabupaten,
@@ -422,7 +433,7 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Surat Dari (Asal Instansi/Pemohon) <span className="text-rose-400">*</span>
+                  Surat Dari (Pemohon) <span className="text-rose-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -526,47 +537,33 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
               2. Kategori Perihal (Hal)
             </h4>
 
-            {/* TAB SELECTOR SERTIFIKASI VS WASAR */}
-            <div className="flex rounded-xl bg-slate-800 p-1 border border-slate-700">
-              <button
-                type="button"
-                onClick={() => handleHalTypeChange('Sertifikasi')}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                  halType === 'Sertifikasi'
-                    ? 'bg-emerald-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                A. Sertifikasi Benih
-              </button>
-              <button
-                type="button"
-                onClick={() => handleHalTypeChange('Wasar')}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                  halType === 'Wasar'
-                    ? 'bg-amber-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                B. Wasar (Pengawasan Pemasaran)
-              </button>
-            </div>
-
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Pilih Detail Perihal ({halType})
+                Pilih Detail Perihal
               </label>
               <select
                 value={hal}
                 onChange={(e) => setHal(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
               >
-                {(halType === 'Sertifikasi' ? HAL_SERTIFIKASI : HAL_WASAR).map((item) => (
+                {PUBLIC_HAL_OPTIONS.map((item) => (
                   <option key={item} value={item}>
                     {item}
                   </option>
                 ))}
               </select>
+
+              {hal === 'Lainnya' && (
+                <div className="mt-2">
+                  <input
+                    type="text"
+                    placeholder="Mohon jelaskan perihal lainnya..."
+                    value={halLainnya}
+                    onChange={(e) => setHalLainnya(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              )}
             </div>
 
             <div>
