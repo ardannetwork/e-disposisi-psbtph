@@ -5,6 +5,7 @@ import { X, Save, FileText, Link as LinkIcon, Upload, Camera } from 'lucide-reac
 import { PUBLIC_HAL_OPTIONS } from '../types/disposisi';
 import { addPublicSubmission, uploadFileToStorage } from '../services/db';
 import { firebaseDb } from '../services/firebase';
+import { DocumentScanner } from './DocumentScanner';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 const MAX_BASE64_SIZE = 900 * 1024;
@@ -40,6 +41,7 @@ export const PublicSuratForm: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState(Math.ceil(MIN_FORM_TIME_MS / 1000));
   const [isHoneypotFilled, setIsHoneypotFilled] = useState(false);
   const honeypotRef = useRef<HTMLInputElement>(null);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [rateLimitTimeLeft, setRateLimitTimeLeft] = useState(() => {
     const lastSubmit = localStorage.getItem(RATE_LIMIT_KEY);
     if (lastSubmit) {
@@ -238,6 +240,23 @@ export const PublicSuratForm: React.FC = () => {
     setRateLimitTimeLeft(0);
   };
 
+  const handleScannerCapture = async (file: File) => {
+    setIsCompressing(true);
+    setOriginalSize(file.size);
+    try {
+      const result = await compressImage(file);
+      setCompressedSize(result.size);
+      setSelectedFile(result.file);
+      setFilePreview(URL.createObjectURL(result.file));
+      setIsFileTooLarge(result.size > MAX_FILE_SIZE);
+    } catch (error) {
+      console.error('Compression error:', error);
+      alert('Gagal memproses foto scanner. Coba lagi.');
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
   if (submitSuccess) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
@@ -412,7 +431,7 @@ export const PublicSuratForm: React.FC = () => {
                     {isCompressing ? (
                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500 mb-2"></div>
-                        <p className="text-xs text-slate-400 font-medium">Mengompresi foto...</p>
+                        <p className="text-xs text-slate-400 font-medium">Mengompresi foto scanner...</p>
                       </div>
                      ) : filePreview && selectedFile?.type.startsWith('image/') ? (
                        <div className="flex items-center gap-3 p-2 w-full">
@@ -426,10 +445,10 @@ export const PublicSuratForm: React.FC = () => {
                                     ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`
                                     : `${(selectedFile.size / 1024).toFixed(0)} KB`
                                   )}`
-                              }
-                             {isFileTooLarge && (
-                               <span className="text-rose-400 ml-1 font-semibold">(Melebihi batas 2MB)</span>
-                             )}
+                               }
+                              {isFileTooLarge && (
+                                <span className="text-rose-400 ml-1 font-semibold">(Melebihi batas 2MB)</span>
+                              )}
                            </p>
                          </div>
                          <button
@@ -451,18 +470,16 @@ export const PublicSuratForm: React.FC = () => {
                      ) : (
                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
                          <Camera className="w-8 h-8 text-slate-500 mb-2" />
-                         <p className="text-xs text-slate-400 font-medium">Klik untuk ambil foto dengan kamera</p>
-                         <p className="text-[10px] text-slate-500 mt-1">JPG, PNG (Maks 2MB, akan dikompres otomatis)</p>
+                         <p className="text-xs text-slate-400 font-medium">Klik untuk buka scanner dokumen</p>
+                         <p className="text-[10px] text-slate-500 mt-1">Pemotongan tepi otomatis & filter dokumen</p>
                        </div>
                      )}
                      <input
-                       type="file"
-                       accept="image/jpeg,image/png,image/jpg"
-                       capture="environment"
-                       onChange={handleFileChange}
-                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                       disabled={isCompressing}
-                     />
+                      type="button"
+                      onClick={() => setIsScannerOpen(true)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      disabled={isCompressing}
+                    />
                   </label>
                 </div>
               )}
@@ -530,6 +547,11 @@ export const PublicSuratForm: React.FC = () => {
             Dengan mengirim form ini, Anda menyetujui bahwa data yang diberikan adalah benar dan dapat diaudit oleh Admin UPT PSBTPH IV Jatim.
           </p>
         </form>
+        <DocumentScanner
+          isOpen={isScannerOpen}
+          onClose={() => setIsScannerOpen(false)}
+          onCapture={handleScannerCapture}
+        />
       </div>
     </div>
   );
