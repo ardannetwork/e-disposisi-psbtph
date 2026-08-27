@@ -63,9 +63,13 @@ export const PublicSubmissionsReview: React.FC = () => {
 
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
 
-  // Bug Fix 2: Delete confirmation modal state
+  // Bug Fix 2: Reject confirmation modal state
   const [deleteTarget, setDeleteTarget] = useState<PublicSuratSubmission | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Permanent delete confirmation modal state (for rejected items)
+  const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<PublicSuratSubmission | null>(null);
+  const [isPermanentDeleting, setIsPermanentDeleting] = useState(false);
 
   const isOperator = currentUser?.role === 'operator';
   const isAdmin = currentUser?.role === 'admin';
@@ -197,6 +201,39 @@ export const PublicSubmissionsReview: React.FC = () => {
 
   const handleCancelReject = () => {
     setDeleteTarget(null);
+  };
+
+  // Handle permanent delete button click for rejected items
+  const handleDeleteClick = (submission: PublicSuratSubmission) => {
+    setPermanentDeleteTarget(submission);
+  };
+
+  // Confirm permanent deletion of a rejected submission
+  const handleConfirmPermanentDelete = async () => {
+    if (!permanentDeleteTarget) return;
+    const { id, link_dokumen } = permanentDeleteTarget;
+    setIsPermanentDeleting(true);
+    // Optimistically hide the item immediately
+    setLocalDeletedIds((prev) => {
+      const next = [...prev, id];
+      return next;
+    });
+    try {
+      await deletePublicSubmission(id, link_dokumen);
+    } catch (err) {
+      console.error('Failed to permanently delete submission:', err);
+      setActionErrors((prev) => ({
+        ...prev,
+        [id]: err instanceof Error ? err.message : 'Gagal menghapus permohonan',
+      }));
+    } finally {
+      setIsPermanentDeleting(false);
+      setPermanentDeleteTarget(null);
+    }
+  };
+
+  const handleCancelPermanentDelete = () => {
+    setPermanentDeleteTarget(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -339,7 +376,9 @@ export const PublicSubmissionsReview: React.FC = () => {
         ) : (
           <div className="space-y-3">
             {sorted.map((submission) => {
-              const effectiveStatus = (localStatusOverrides[submission.id] || submission.status) as PublicSuratSubmission['status'];
+              // submission.status already reflects localStatusOverrides because sorted
+              // comes from mergedWithOverrides — use it directly to avoid a stale lookup.
+              const effectiveStatus = submission.status as PublicSuratSubmission['status'];
               const isPending = effectiveStatus === 'pending';
 
               return (
@@ -427,6 +466,17 @@ export const PublicSubmissionsReview: React.FC = () => {
                           </button>
                         </div>
                       )}
+
+                      {/* DELETE BUTTON — only visible for rejected items */}
+                      {canReview && effectiveStatus === 'rejected' && (
+                        <button
+                          onClick={() => handleDeleteClick(submission)}
+                          className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-rose-900/40 border border-slate-700 hover:border-rose-500/50 text-slate-400 hover:text-rose-400 text-[11px] font-bold flex items-center gap-1.5 transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Hapus
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -479,6 +529,61 @@ export const PublicSubmissionsReview: React.FC = () => {
                   className="flex-1 px-4 py-2.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-sm font-semibold hover:bg-rose-500/30 transition-all shadow-lg shadow-rose-500/10 disabled:opacity-50"
                 >
                   {isDeleting ? 'Menolak...' : 'Ya, Tolak'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PERMANENT DELETE CONFIRMATION MODAL (for rejected items) */}
+      {permanentDeleteTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            onClick={handleCancelPermanentDelete}
+          />
+          <div className="relative w-full max-w-sm bg-slate-900 border border-rose-500/30 rounded-2xl shadow-2xl shadow-rose-500/10 p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-14 h-14 rounded-full bg-rose-500/15 border border-rose-500/30 flex items-center justify-center mb-4">
+                <Trash2 className="w-7 h-7 text-rose-400" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-100 mb-1">Hapus Permanen</h3>
+              <p className="text-sm text-slate-400 mb-3">
+                Permohonan dari{' '}
+                <span className="text-rose-300 font-semibold">{permanentDeleteTarget.surat_dari}</span>{' '}
+                akan <strong className="text-white">dihapus permanen</strong>, termasuk file dokumennya.
+              </p>
+              <div className="w-full bg-slate-800/80 border border-slate-700 rounded-xl p-3 mb-4 text-left space-y-1">
+                <p className="text-xs text-slate-300">
+                  <span className="font-semibold text-slate-400">Perihal:</span> {permanentDeleteTarget.hal}
+                </p>
+                <p className="text-xs text-slate-300">
+                  <span className="font-semibold text-slate-400">Kategori:</span> {permanentDeleteTarget.hal_type}
+                </p>
+                <p className="text-xs text-slate-300">
+                  <span className="font-semibold text-slate-400">Kabupaten:</span> {permanentDeleteTarget.kabupaten || '-'}
+                </p>
+                {permanentDeleteTarget.link_dokumen && !permanentDeleteTarget.link_dokumen.startsWith('data:') && (
+                  <p className="text-xs text-rose-400 font-semibold mt-1">
+                    ⚠ File di Storage juga akan dihapus.
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={handleCancelPermanentDelete}
+                  disabled={isPermanentDeleting}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-sm font-semibold hover:bg-slate-700 transition-all disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleConfirmPermanentDelete}
+                  disabled={isPermanentDeleting}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold transition-all shadow-lg shadow-rose-500/10 disabled:opacity-50"
+                >
+                  {isPermanentDeleting ? 'Menghapus...' : 'Ya, Hapus'}
                 </button>
               </div>
             </div>

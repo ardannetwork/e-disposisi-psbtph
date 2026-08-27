@@ -79,7 +79,38 @@ export const updateDisposisiInFirestore = async (id: string, data: Partial<Dispo
   }
 };
 
-export const deleteDisposisiFromFirestore = async (id: string) => {
+export const deleteDisposisiFromFirestore = async (id: string, linkDokumen?: string) => {
+  // 1. Coba hapus file dari Firebase Storage jika ada dan berupa URL Storage
+  if (linkDokumen && isFirebaseStorageUrl(linkDokumen)) {
+    let storageInstance = firebaseStorage;
+    if (!storageInstance) {
+      try {
+        const { getApps } = await import('firebase/app');
+        const { getStorage } = await import('firebase/storage');
+        const apps = getApps();
+        if (apps.length > 0) {
+          storageInstance = getStorage(apps[0]);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (storageInstance) {
+      try {
+        console.log('[deleteDisposisiFromFirestore] Attempting to delete Storage file using full URL:', linkDokumen);
+        const fileRef = ref(storageInstance, linkDokumen);
+        await deleteObject(fileRef);
+        console.log('[deleteDisposisiFromFirestore] Storage file deleted successfully.');
+      } catch (err) {
+        console.error('[deleteDisposisiFromFirestore] Failed to delete file from Firebase Storage:', err);
+      }
+    } else {
+      console.warn('[deleteDisposisiFromFirestore] Firebase Storage instance not available — skipping file deletion.');
+    }
+  }
+
+  // 2. Hapus data dokumen dari Firestore
   if (!firebaseDb) return;
   try {
     await deleteDoc(doc(firebaseDb, SURAT_COLLECTION, id));
@@ -189,20 +220,35 @@ const isFirebaseStorageUrl = (url: string): boolean => {
  */
 export const deletePublicSubmission = async (id: string, linkDokumen?: string): Promise<void> => {
   // 1. Delete file from Firebase Storage if it's a Storage URL
-  if (linkDokumen && isFirebaseStorageUrl(linkDokumen) && firebaseStorage) {
-    try {
-      // Extract storage path from the download URL
-      const url = new URL(linkDokumen);
-      // The path is encoded in the 'o' query param for Firebase Storage
-      const pathParam = url.searchParams.get('o');
-      if (pathParam) {
-        const storagePath = decodeURIComponent(pathParam);
-        const fileRef = ref(firebaseStorage, storagePath);
-        await deleteObject(fileRef);
+  if (linkDokumen && isFirebaseStorageUrl(linkDokumen)) {
+    // Get Storage instance dynamically at call time (avoids stale null reference)
+    let storageInstance = firebaseStorage;
+    if (!storageInstance) {
+      try {
+        const { getApps } = await import('firebase/app');
+        const { getStorage } = await import('firebase/storage');
+        const apps = getApps();
+        if (apps.length > 0) {
+          storageInstance = getStorage(apps[0]);
+        }
+      } catch {
+        // ignore — will be caught below
       }
-    } catch (err) {
-      // Don't block deletion if file removal fails (e.g. already deleted)
-      console.warn('Could not delete file from Firebase Storage:', err);
+    }
+
+    if (storageInstance) {
+      try {
+        console.log('[deletePublicSubmission] Attempting to delete Storage file using full URL:', linkDokumen);
+        // Firebase Storage ref() can automatically parse full download URLs or gs:// URLs!
+        const fileRef = ref(storageInstance, linkDokumen);
+        await deleteObject(fileRef);
+        console.log('[deletePublicSubmission] Storage file deleted successfully.');
+      } catch (err) {
+        // Log but don't block Firestore deletion
+        console.error('[deletePublicSubmission] Failed to delete file from Firebase Storage:', err);
+      }
+    } else {
+      console.warn('[deletePublicSubmission] Firebase Storage instance not available — skipping file deletion.');
     }
   }
 

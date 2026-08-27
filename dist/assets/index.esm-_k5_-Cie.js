@@ -1,0 +1,1 @@
+import{u as e}from"./index.esm-10SPMAGV.js";export{e as getStorage};

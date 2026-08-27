@@ -1,0 +1,1 @@
+import{p as e}from"./index.esm-C_s8mdNV.js";e(`firebase`,`12.17.1`,`app`);

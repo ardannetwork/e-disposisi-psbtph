@@ -1,0 +1,1 @@
+import{d as e}from"./index.esm-C_s8mdNV.js";import"./index.esm-CvhLS_sn.js";export{e as getApps};

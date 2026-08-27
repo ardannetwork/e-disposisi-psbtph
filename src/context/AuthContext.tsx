@@ -470,7 +470,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setDisposisiList((prev) => prev.filter((item) => item.id !== id));
     
     try {
-      await deleteDisposisiFromFirestore(id);
+      await deleteDisposisiFromFirestore(id, previousData?.link_dokumen);
     } catch (err) {
       if (previousData) {
         setDisposisiList((prev) => [...prev, previousData]);
