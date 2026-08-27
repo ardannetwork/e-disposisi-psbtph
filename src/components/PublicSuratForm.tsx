@@ -238,6 +238,23 @@ export const PublicSuratForm: React.FC = () => {
     setRateLimitTimeLeft(0);
   };
 
+  const handleDocModeToggle = (mode: 'url' | 'file' | 'camera') => {
+    setDocInputMode(mode);
+    if (mode === 'url') {
+      setSelectedFile(null);
+      setFilePreview('');
+      setIsFileTooLarge(false);
+    } else if (mode === 'file') {
+      setLinkDokumen('');
+      setIsFileTooLarge(false);
+    } else {
+      setLinkDokumen('');
+      setSelectedFile(null);
+      setFilePreview('');
+      setIsFileTooLarge(false);
+    }
+  };
+
   if (submitSuccess) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
@@ -355,7 +372,7 @@ export const PublicSuratForm: React.FC = () => {
               <div className="flex rounded-xl bg-slate-800 p-1 border border-slate-700 mb-3">
                 <button
                   type="button"
-                  onClick={() => { setDocInputMode('url'); setLinkDokumen(''); setSelectedFile(null); setFilePreview(''); setOriginalSize(0); setCompressedSize(0); setIsFileTooLarge(false); }}
+                  onClick={() => handleDocModeToggle('url')}
                   className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                     docInputMode === 'url'
                       ? 'bg-emerald-600 text-white shadow-md'
@@ -367,19 +384,22 @@ export const PublicSuratForm: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setDocInputMode('file'); setLinkDokumen(''); }}
+                  onClick={() => handleDocModeToggle('file')}
+                  disabled={isFileTooLarge}
                   className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                    docInputMode === 'file'
-                      ? 'bg-amber-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
+                    isFileTooLarge
+                      ? 'bg-rose-600 text-white cursor-not-allowed'
+                      : docInputMode === 'file'
+                        ? 'bg-amber-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   <Upload className="w-3.5 h-3.5 inline mr-1" />
-                  Upload File
+                  {isFileTooLarge ? 'File Terlalu Besar' : 'Upload File'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setDocInputMode('camera'); setLinkDokumen(''); }}
+                  onClick={() => handleDocModeToggle('camera')}
                   className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                     docInputMode === 'camera'
                       ? 'bg-sky-600 text-white shadow-md'
@@ -459,6 +479,74 @@ export const PublicSuratForm: React.FC = () => {
                        type="file"
                        accept="image/jpeg,image/png,image/jpg"
                        capture="environment"
+                       onChange={handleFileChange}
+                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                       disabled={isCompressing}
+                     />
+                  </label>
+                 </div>
+              )}
+
+              {docInputMode === 'file' && (
+                <div>
+                  <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer hover:bg-slate-800/50 transition-colors relative overflow-hidden ${
+                    isFileTooLarge ? 'border-rose-500 bg-rose-500/10' : 'border-slate-700 hover:border-slate-500'
+                  }`}>
+                    {isCompressing ? (
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mb-2"></div>
+                        <p className="text-xs text-slate-400 font-medium">Mengompresi file...</p>
+                      </div>
+                     ) : filePreview ? (
+                       <div className="flex items-center gap-3 p-2 w-full">
+                         {selectedFile?.type.startsWith('image/') ? (
+                           <img src={filePreview} alt="Preview" className="w-12 h-12 object-cover rounded-lg border border-slate-700" />
+                         ) : (
+                           <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center border border-slate-600">
+                             <FileText className="w-6 h-6 text-slate-300" />
+                           </div>
+                         )}
+                         <div className="min-w-0 flex-1">
+                           <p className="text-xs font-semibold text-slate-200 truncate">{selectedFile?.name}</p>
+                           <p className="text-[10px] text-slate-400">
+                              {compressedSize > 0 && originalSize > 0
+                                ? `${(compressedSize / 1024).toFixed(0)} KB (dari ${(originalSize / 1024).toFixed(0)} KB)`
+                                : selectedFile && `${(selectedFile.size / 1024 > 1024
+                                    ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`
+                                    : `${(selectedFile.size / 1024).toFixed(0)} KB`
+                                  )}`
+                              }
+                             {isFileTooLarge && (
+                               <span className="text-rose-400 ml-1 font-semibold">(Melebihi batas 2MB)</span>
+                             )}
+                           </p>
+                         </div>
+                         <button
+                           type="button"
+                           onClick={(e) => {
+                             e.preventDefault();
+                             setSelectedFile(null);
+                             setFilePreview('');
+                             setLinkDokumen('');
+                             setOriginalSize(0);
+                             setCompressedSize(0);
+                             setIsFileTooLarge(false);
+                           }}
+                           className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                         >
+                           <X className="w-4 h-4" />
+                         </button>
+                       </div>
+                     ) : (
+                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                         <Upload className="w-8 h-8 text-slate-500 mb-2" />
+                         <p className="text-xs text-slate-400 font-medium">Klik untuk upload file</p>
+                         <p className="text-[10px] text-slate-500 mt-1">PDF, JPG, PNG (Maks 2MB, otomatis dikompres)</p>
+                       </div>
+                     )}
+                     <input
+                       type="file"
+                       accept="application/pdf,image/jpeg,image/png,image/jpg"
                        onChange={handleFileChange}
                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                        disabled={isCompressing}

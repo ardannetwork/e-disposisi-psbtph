@@ -41,8 +41,8 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
   const [sifat, setSifat] = useState<string>('Penting');
   const [hal, setHal] = useState<string>(PUBLIC_HAL_OPTIONS[0]);
   const [halLainnya, setHalLainnya] = useState('');
-  const [pic, setPic] = useState<string>(PETUGAS_PBT_LIST[0]);
-  const [petugas, setPetugas] = useState<string>(PETUGAS_PBT_LIST[0]);
+  const [pic, setPic] = useState<string>('');
+  const [petugas, setPetugas] = useState<string>('');
   const [kabupaten, setKabupaten] = useState<string>('');
   const [catatanSelected, setCatatanSelected] = useState<string[]>([
     'TL sesuai peraturan yang berlaku',
@@ -91,8 +91,8 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
       setSifat(initialData.sifat || 'Penting');
       setHal(initialData.hal || PUBLIC_HAL_OPTIONS[0]);
       setHalLainnya('');
-      setPetugas(initialData.petugas || PETUGAS_PBT_LIST[0]);
-      setPic(initialData.pic || PETUGAS_PBT_LIST[0]);
+      setPetugas(initialData.petugas || '');
+      setPic(initialData.pic || '');
       setKabupaten(initialData.kabupaten || '');
       setCatatanSelected(initialData.catatan || []);
       setCatatanLain(initialData.catatan_lain || '');
@@ -116,8 +116,8 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
       setSifat('Penting');
       setHal(PUBLIC_HAL_OPTIONS[0]);
       setHalLainnya('');
-      setPetugas(PETUGAS_PBT_LIST[0]);
-      setPic(PETUGAS_PBT_LIST[0]);
+      setPetugas('');
+      setPic('');
       setKabupaten('');
       setCatatanSelected(['TL sesuai peraturan yang berlaku']);
       setCatatanLain('');
@@ -876,6 +876,7 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
                     onChange={(e) => setPic(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-amber-300 font-semibold focus:outline-none focus:border-amber-500"
                   >
+                    <option value="">Pilih PIC...</option>
                     {PETUGAS_PBT_LIST.map((pbt) => (
                       <option key={pbt} value={pbt}>
                         {pbt}
@@ -893,6 +894,7 @@ export const SuratFormModal: React.FC<SuratFormModalProps> = ({
                     onChange={(e) => setPetugas(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-amber-300 font-semibold focus:outline-none focus:border-amber-500"
                   >
+                    <option value="">Pilih Petugas PBT...</option>
                     {PETUGAS_PBT_LIST.map((pbt) => (
                       <option key={pbt} value={pbt}>
                         {pbt}
